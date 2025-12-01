@@ -1,0 +1,7 @@
+*.png
+*.pdf
+*.tsv
+*.parquet
+*.bed
+*.pyc
+*.fna
