@@ -146,6 +146,7 @@ if NUMBA_OK:
         mask = (1 << (2*L)) - 1
         code = 0
         valid_len = 0
+        # Compute kmer code in rolling fashion. When we hit an invalid base, reset.
         for i in range(n):
             b = seq_codes[i]
             if b < 4:
@@ -245,20 +246,20 @@ def aggregate_regions_on_sequence(seq: str, name: str, strand: str,
 
     gc_arr = gc_bool_array(seq)
 
-    def push_topA(score: float, rec: tuple):
-        if len(topA_heap) < A:
-            heapq.heappush(topA_heap, (score, rec))
-        else:
-            if score > topA_heap[0][0]:
-                heapq.heapreplace(topA_heap, (score, rec))
+    # def push_topA(score: float, rec: tuple):
+    #     if len(topA_heap) < A:
+    #         heapq.heappush(topA_heap, (score, rec))
+    #     else:
+    #         if score > topA_heap[0][0]:
+    #             heapq.heapreplace(topA_heap, (score, rec))
 
-    def push_botB(score: float, rec: tuple):
-        neg = -score
-        if len(botB_heap) < B:
-            heapq.heappush(botB_heap, (neg, rec))
-        else:
-            if neg > botB_heap[0][0]:
-                heapq.heapreplace(botB_heap, (neg, rec))
+    # def push_botB(score: float, rec: tuple):
+    #     neg = -score
+    #     if len(botB_heap) < B:
+    #         heapq.heappush(botB_heap, (neg, rec))
+    #     else:
+    #         if neg > botB_heap[0][0]:
+    #             heapq.heapreplace(botB_heap, (neg, rec))
 
     T = n - L + 1
     w_in  = max(0, (2*M + 1) - L + 1)
@@ -405,6 +406,7 @@ def main():
         ap.error("Require N > M so that outer flanks are non-empty.")
 
     # PWM (optionally convert to LLR rows)
+    import pdb; pdb.set_trace()
     logp = read_pwm_txt(args.pwm)
     bg_q = None
     if args.bg_from_fasta:

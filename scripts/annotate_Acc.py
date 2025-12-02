@@ -4,7 +4,7 @@ import argparse
 
 
 parser = argparse.ArgumentParser(
-    description = "Take accessibility adata and the pwm prior data to calculate sl score"
+    description = "Take accessibility adata and the pwm prior data to calculate sl score by taking accessibility data."
 )
 parser.add_argument("-n", "--ASnative", type = str, default = "/home/yangli/workspace/accessibility/calculated_table/genome/ANC1C.hisat3n_table.bed6", help = "AS native")
 parser.add_argument("-f", "--ASfixed", type = str, default = "/home/yangli/workspace/accessibility/calculated_table/genome/ANC1xC.hisat3n_table.bed6", help = "AS fixed")
