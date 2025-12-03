@@ -1,10 +1,10 @@
 {
-  "motif_parquet": "results/example_motif.parquet",
-  "clipseq_bed": "data/accessibility/example_clipseq.bed",
-  "pipseq_parquet": "results/PIPseq_HeLa.parquet",
+  "input_data_parquet": "results/example_motif.parquet",
+  "clipseq_bed": "data/clipseq/ELAVL1_HeLa.bed",
+  "pipseq_parquet": "data/evaluation/PIPseq_HeLa.parquet",
   "rbp_name": "ExampleRBP",
   "motif_id": "M00124",
-  "motif_logo": "assets/accmix-logo.svg",
+  "motif_logo": "",
   "output_root": "results",
   "score_phastcons100_threshold": 1.0,
   "motif_range": 50

@@ -24,23 +24,24 @@ def _load_config(path: str) -> Dict[str, Any]:
 def run_evaluation(config_path: str) -> None:
     """Run evaluation pipeline based on a JSON config.
 
-    The config schema (JSON):
-    {
-    "motif_parquet": "path/to/motif.parquet",
-      "clipseq_bed": "path/to/clipseq.bed",
-      "pipseq_parquet": "path/to/PIPseq.parquet",
-      "rbp_name": "RBPName",
-      "motif_id": "M00001",
+        The config schema (JSON):
+        {
+            "input_data_parquet": "path/to/RBP_Motif.model.parquet",  # fitted model data (motif_files from run_mixture_model.py)
+            "clipseq_bed": "path/to/clipseq.bed",
+            "pipseq_parquet": "path/to/PIPseq.parquet",
+            "rbp_name": "RBPName",
+            "motif_id": "M00001",
             "motif_logo": "path/to/logo.png",
-            "output_root": "results",         # for plots/logs
-            "model_json": "results/RBP_Motif.model.json",  # trained model
-      "score_phastcons100_threshold": 1.0,
-      "motif_range": 50
-    }
+            "output_root": "results",                                  # for plots/logs
+            "model_json": "results/RBP_Motif.model.json",              # trained model parameters
+            "score_phastcons100_threshold": 1.0,
+            "motif_range": 50
+        }
     """
 
     cfg = _load_config(config_path)
-    motif_file = cfg["motif_parquet"]
+    # Input data produced by the model step ("motif_files" in run_mixture_model.py)
+    motif_file = cfg["input_data_parquet"]
     clipseq_file = cfg["clipseq_bed"]
     pipseq_file = cfg["pipseq_parquet"]
     rbp_name = cfg.get("rbp_name", "RBP")

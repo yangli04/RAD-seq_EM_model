@@ -31,13 +31,18 @@ def compute_sl(ASnative: str, ASfixed: str, toptable: str, out_parquet: str,
     dftop_inner_pr = pr.PyRanges(dftop_inner.to_pandas())
     dftop_outer_pr = pr.PyRanges(dftop_outer.to_pandas())
 
-    dftop_inner_fixed_pr = dftop_inner_pr.join(AS_fixed_pr, strandedness="same")
-    dftop_outer_fixed_pr = dftop_outer_pr.join(AS_fixed_pr, strandedness="same")
-    dftop_inner_native_pr = dftop_inner_pr.join(AS_native_pr, strandedness="same")
-    dftop_outer_native_pr = dftop_outer_pr.join(AS_native_pr, strandedness="same")
+    # dftop_inner_fixed_pr = dftop_inner_pr.join(AS_fixed_pr, strandedness="same")
+    # dftop_outer_fixed_pr = dftop_outer_pr.join(AS_fixed_pr, strandedness="same")
+    # dftop_inner_native_pr = dftop_inner_pr.join(AS_native_pr, strandedness="same")
+    # dftop_outer_native_pr = dftop_outer_pr.join(AS_native_pr, strandedness="same")
+    dftop_inner_fixed_pr = dftop_inner_pr.join_overlaps(AS_fixed_pr, strand_behavior="same", join_type = "inner")
+    dftop_outer_fixed_pr = dftop_outer_pr.join_overlaps(AS_fixed_pr, strand_behavior="same", join_type = "inner")
+    dftop_inner_native_pr = dftop_inner_pr.join_overlaps(AS_native_pr, strand_behavior="same", join_type = "inner")
+    dftop_outer_native_pr = dftop_outer_pr.join_overlaps(AS_native_pr, strand_behavior="same", join_type = "inner")
 
-    dftop_inner_fixed_df = pl.from_pandas(dftop_inner_fixed_pr.df)
-    dftop_inner_native_df = pl.from_pandas(dftop_inner_native_pr.df)
+
+    dftop_inner_fixed_df = pl.from_pandas(dftop_inner_fixed_pr)
+    dftop_inner_native_df = pl.from_pandas(dftop_inner_native_pr)
 
     def filter_outer(df: pl.DataFrame) -> pl.DataFrame:
         # Use flank length equal to N - M per request
@@ -46,8 +51,8 @@ def compute_sl(ASnative: str, ASfixed: str, toptable: str, out_parquet: str,
         mask2 = (df["Start_b"] >= df["End"] - flank) & (df["Start_b"] <= df["End"])  
         return df.filter(mask1 | mask2)
 
-    dftop_outer_fixed_df = filter_outer(pl.from_pandas(dftop_outer_fixed_pr.df))
-    dftop_outer_native_df = filter_outer(pl.from_pandas(dftop_outer_native_pr.df))
+    dftop_outer_fixed_df = filter_outer(pl.from_pandas(dftop_outer_fixed_pr))
+    dftop_outer_native_df = filter_outer(pl.from_pandas(dftop_outer_native_pr))
 
     def summarize_weighted_by_id(
         df: pl.DataFrame,
