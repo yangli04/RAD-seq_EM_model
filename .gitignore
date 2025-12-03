@@ -1,32 +1,8 @@
-# Outputs and data tables
 *.png
 *.pdf
 *.tsv
-*.tsv.gz
 *.parquet
 *.bed
-*.bed.gz
-*.json
-
-# Python artifacts
 *.pyc
-__pycache__/
-.pytest_cache/
-.venv/
-venv/
-
-# Build/packaging
-dist/
-build/
-*.egg-info/
-
-# Snakemake
+*.fna
 .snakemake*
-
-# Local results folders (not packaged)
-results/
-logs/
-plots/
-predicted_bound/
-midway3_results/
-metadatasets/
