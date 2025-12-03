@@ -148,10 +148,8 @@ def annotate_tss(
     ann_df_tx_pr = pr.PyRanges(ann_df_tx.to_pandas())
 
     joined_pr = ann_df_tx_pr.join_overlaps(conservative_pr, strand_behavior="ignore", join_type="left")
-
-
-    # joined_ann_df = pl.DataFrame(joined_pr.df)
     joined_ann_df = pl.DataFrame(joined_pr)
+    # percent of regions covered by PhastCons100way. 
     joined_ann_df = joined_ann_df.with_columns(
         (
             ((pl.min_horizontal("End", "End_b") - pl.max_horizontal("Start", "Start_b"))/100)
@@ -204,6 +202,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument("--N", type=int, default=500, help="Outer half-width (default 500)")
     ap.add_argument("--threshold", type=int, default=8, help="Minimum overlaps per id (default 8)")
     # annotate-tss parameters
+    # WARNING: annotate-tss can use substantial memory on genome-scale inputs;
+    # consider running on a machine with ample RAM or subsetting sites.
     ap.add_argument("--input-parquet", default=None, help="Parquet to annotate (e.g., output of annotate-acc)")
     ap.add_argument("--out", default=None, help="Output parquet path for annotated features")
     ap.add_argument("--rna-seq-parquet", default="data/expression/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet")
