@@ -121,10 +121,10 @@ def annotate_tss_cmd(args=None):
         default=None,
         help="Output parquet (default: results/annotated.<timestamp>.parquet)",
     )
-    ap.add_argument("--rna-seq-parquet", default="../metadatasets/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet")
-    ap.add_argument("--phastcons-bed", default="../metadatasets/phastCons100way1.bed")
-    ap.add_argument("--phastcons-parquet", default="../midway3_results/hg38.phastCons100way.1.parquet")
-    ap.add_argument("--phylop-parquet", default="../midway3_results/hg38.phyloP100way.1.parquet")
+    ap.add_argument("--rna-seq-parquet", default="data/expression/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet")
+    ap.add_argument("--phastcons-bed", default="data/conservation_score/phastCons100way1.bed")
+    ap.add_argument("--phastcons-parquet", default="data/conservation_score/hg38.phastCons100way.1.parquet")
+    ap.add_argument("--phylop-parquet", default="data/conservation_score/hg38.phyloP100way.1.parquet")
     ap.add_argument("--reference", default="GRCh38")
     args = ap.parse_args(args=args)
 

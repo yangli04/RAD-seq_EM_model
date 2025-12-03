@@ -1,8 +1,8 @@
 import glob, os
 from os.path import basename, splitext, join, expanduser
 
-TRANSCRIPTS = expanduser("/home/yangli/data/reference/Homo_sapiens/sequence/GCA_000001405.15_GRCh38_no_alt_analysis_set.chr22XYM.fna")
-PWM_DIR     = expanduser("/home/yangli/workspace/accessibility/CISBP_RNA/valid_pwm_files/")
+TRANSCRIPTS = "data/fasta/genome.small.fa.gz"
+PWM_DIR     = "data/pwms"
 
 PWM_TXTS = sorted(glob.glob(join(PWM_DIR, "*.txt")))
 MOTIFS   = [splitext(basename(p))[0] for p in PWM_TXTS]

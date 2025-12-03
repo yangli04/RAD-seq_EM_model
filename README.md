@@ -25,9 +25,9 @@ Commands
 - Scan PWM and GC
 ```bash
 accmix scan \
-  --fasta genome.fa.gz \
-  --pwm motif.txt \
-  --out-prefix results/M00124
+  --fasta data/fasta/test.fa \
+  --pwm data/pwms/M00124_example.txt \
+  --out-prefix results/M00124_example
 ```
 Outputs: `results/M00124_topA.tsv.gz`, `results/M00124_botB.tsv.gz`.
 

@@ -116,10 +116,10 @@ def compute_sl(ASnative: str, ASfixed: str, toptable: str, out_parquet: str,
 def annotate_tss(
     input_parquet: str,
     out_parquet: str,
-    rna_seq_parquet: str = "../metadatasets/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet",
-    phastcons_bed: str = "../metadatasets/phastCons100way1.bed",
-    phastcons_parquet: str = "../midway3_results/hg38.phastCons100way.1.parquet",
-    phylop_parquet: str = "../midway3_results/hg38.phyloP100way.1.parquet",
+    rna_seq_parquet: str = "data/expression/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet",
+    phastcons_bed: str = "data/conservation_score/phastCons100way1.bed",
+    phastcons_parquet: str = "data/conservation_score/hg38.phastCons100way.1.parquet",
+    phylop_parquet: str = "data/conservation_score/hg38.phyloP100way.1.parquet",
     reference: str = "GRCh38",
 ):
     from metagene import load_reference, map_to_transcripts
@@ -146,7 +146,12 @@ def annotate_tss(
                                 ).with_columns((1 / (1 + pl.col("transcript_start") / pl.col("transcript_length"))).fill_null(0).alias("Tx_percent"))
     conservative_pr = pr.PyRanges(conservative_df.to_pandas())
     ann_df_tx_pr = pr.PyRanges(ann_df_tx.to_pandas())
-    joined_ann_df = pl.DataFrame(ann_df_tx_pr.join_overlaps(conservative_pr, strand_behavior="ignore", join_type="left"))
+
+    joined_pr = ann_df_tx_pr.join_overlaps(conservative_pr, strand_behavior="ignore", join_type="left")
+
+
+    # joined_ann_df = pl.DataFrame(joined_pr.df)
+    joined_ann_df = pl.DataFrame(joined_pr)
     joined_ann_df = joined_ann_df.with_columns(
         (
             ((pl.min_horizontal("End", "End_b") - pl.max_horizontal("Start", "Start_b"))/100)
@@ -201,9 +206,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # annotate-tss parameters
     ap.add_argument("--input-parquet", default=None, help="Parquet to annotate (e.g., output of annotate-acc)")
     ap.add_argument("--out", default=None, help="Output parquet path for annotated features")
-    ap.add_argument("--rna-seq-parquet", default="../metadatasets/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet")
-    ap.add_argument("--phastcons-bed", default="../metadatasets/phastCons100way1.bed")
-    ap.add_argument("--phastcons-parquet", default="../midway3_results/hg38.phastCons100way.1.parquet")
-    ap.add_argument("--phylop-parquet", default="../midway3_results/hg38.phyloP100way.1.parquet")
+    ap.add_argument("--rna-seq-parquet", default="data/expression/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet")
+    ap.add_argument("--phastcons-bed", default="data/conservation_score/phastCons100way1.bed")
+    ap.add_argument("--phastcons-parquet", default="data/conservation_score/hg38.phastCons100way.1.parquet")
+    ap.add_argument("--phylop-parquet", default="data/conservation_score/hg38.phyloP100way.1.parquet")
     ap.add_argument("--reference", default="GRCh38")
     return ap

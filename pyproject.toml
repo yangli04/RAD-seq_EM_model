@@ -1,0 +1,34 @@
+[project]
+name = "accmix"
+version = "0.1.0"
+description = "RAD-seq EM mixture with logistic prior: scan, annotate, model, diff"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary"}
+authors = [{name = "yangli04"}]
+dependencies = [
+  "polars>=0.20",
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "pyranges>=0.0.129",
+  "metagene>=0.0.15",
+  "scikit-learn>=1.2",
+  "matplotlib>=3.7",
+  "seaborn>=0.12",
+  "pandas>=2.0",
+  "pyarrow>=12",
+  "numba>=0.57",
+  "tqdm>=4.65"
+]
+
+[project.scripts]
+accmix = "accmix.cli:main"
+
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["accmix*"]
+exclude = ["sitemix*", "radseq_em*", "results*", "scripts*", "plots*", "logs*", "metadatasets*", "midway3_results*", "CISBP_RNA*"]
