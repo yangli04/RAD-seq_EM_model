@@ -56,6 +56,11 @@ accmix model \
 ```
 Outputs: `<out>.model.parquet` with `prior_p` and `posterior_r`, and `<out>.model.json` with parameters.
 
+- Evaluate fitted model against CLIP/PIP-seq (example JSON config)
+```bash
+accmix evaluate --config example_data/evaluate_config.example.json
+```
+
 Notes
 
 - Dependencies: `polars`, `pyranges`, `metagene`, `numpy`, `scipy`, `pyarrow`, `numba`, `tqdm` (installed via `pip install -e .`).
