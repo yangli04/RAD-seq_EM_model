@@ -18,7 +18,8 @@ dependencies = [
   "pandas>=2.0",
   "pyarrow>=12",
   "numba>=0.57",
-  "tqdm>=4.65"
+  "tqdm>=4.65",
+  "typer[all]>=0.11"
 ]
 
 [project.scripts]
