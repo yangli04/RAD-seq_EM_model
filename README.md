@@ -1,6 +1,6 @@
-# accmix: Accessibility Mixture Model
-
 <img src="assets/accmix-logo.svg" alt="accmix logo" width="420">
+
+# accmix: Accessibility Mixture Model
 
 Concise CLI package to: (1) scan PWM genome-wide, (2) compute accessibility-derived site score `s_l`, (3) annotate with TSS/conservation/TPM, and (4) fit a Gaussian EM with a logistic prior.
 
