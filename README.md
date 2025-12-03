@@ -1,28 +1,52 @@
-# EM model for RAD-seq
+# accmix: Accessibility Mixture Model
 
-This repository implements a site-level mixture model that scores genomic motif sites using a depth-weighted RAD/AS signal (`s_l`) and a logistic prior built from sequence and annotation features.
+Concise CLI package to: (1) scan PWM genome-wide, (2) compute accessibility-derived site score `s_l`, (3) annotate with TSS/conservation/TPM, and (4) fit a Gaussian EM with a logistic prior.
 
-- **Model**: two-component mixture (background vs signal) on site score `s_l`; prior p_l = sigmoid(X beta). EM / MLE / hybrid estimation available (see `scripts/model.py`). Gaussian variant implemented as `run_em_Gaussian`.
-- **Key scripts**:
-  - `scripts/scan_pwm_regions.py`: genome-wide PWM & GC scanner -> motif region scores (`*_topA.tsv.gz` / `*_botB.tsv.gz`).
-  - `scripts/annotate_Acc.py`: computes site statistic `s_l` from accessibility (AS native/fixed) tables and PWM priors -> parquet with `s_l`.
-  - `scripts/annotate_TSS.py`: maps sites to transcripts, adds TSS proximity, conservation, TPM, and other annotations.
-  - `scripts/model.py`: core model and estimators (modes: `empirical`, `em`, `mle`, `hybrid`); cli produces `<out>.parquet` (adds `prior_p`, `posterior_r`) and `<out>.json` (params).
-  - `scripts/run_mixture_model.py`: high-level driver that loads motif tables, runs EM/Gaussian EM, generates plots and saves results.
-  - `scripts/em_utils.py`: plotting, diagnostics, and result-saving helpers.
+Status: under active development. Interfaces may evolve; please pin commits for reproducibility.
 
-- **Input format**: TSV/Parquet with columns: unique site id (default `site`/`id`), `s_l` (precomputed), and feature columns (examples: `inner_mean_logPWM`, `outer_mean_logPWM`, `GC_inner_pct`, `GC_outer_pct`, `TSS_proximity`, `PhastCons100_percent`, `TPM`, `score_phastcons100`, `score_phylop100`). Use `scripts/make_table.py` + `annotate_TSS.py` to prepare inputs.
-
-- **Outputs**: `<out>.parquet` (input plus `prior_p`, `posterior_r`), `<out>.json` (fitted params); analysis and evaluation scripts also write plots and TSVs under `../logs`, `../plots`, and `../predicted_bound`.
-
-- **Quick example**:
-  - Prepare input TSV/parquet with `s_l` and features. By the sequence of scan_pwm, annotate_Acc and annotate_TSS. 
-  - Run model (hybrid mode recommended):
+Installation
 
 ```bash
-python3 scripts/model.py --tsv input.tsv --feat-cols inner_mean_logPWM,outer_mean_logPWM,GC_inner_pct,GC_outer_pct,TSS_proximity,PhastCons100_percent,TPM,score_phastcons100,score_phylop100 --out-prefix results/motif1 --mode hybrid
+pip install -e .
 ```
 
-- **Notes**: features are typically z-scored before fitting (see `scripts/run_mixture_model.py`); posterior thresholds used in downstream scripts: e.g. `posterior_r > 0.99` => bound, `<0.5` => unbound, others uncertain. See `scripts/compute_diff_bind.py` for differential-binding logic.
+Commands
 
-For details, inspect the docstrings in `scripts/model.py` and helpers in `scripts/em_utils.py`.
+- Scan PWM and GC
+```bash
+accmix scan \
+  --fasta genome.fa.gz \
+  --pwm motif.txt \
+  --out-prefix results/M00124
+```
+Outputs: `results/M00124_topA.tsv.gz`, `results/M00124_botB.tsv.gz`.
+
+- Annotate accessibility (compute `s_l`)
+```bash
+accmix annotate-acc \
+  --ASnative path/ANC1C.hisat3n_table.bed6 \
+  --ASfixed  path/ANC1xC.hisat3n_table.bed6 \
+  --toptable results/M00124_topA.tsv.gz \
+  --out results/top_sl_table.parquet
+```
+Uses inner `M=50`, outer `N=500` (defaults); outer flank length is `N-M`.
+
+- Annotate TSS/conservation/TPM
+```bash
+accmix annotate-tss \
+  --input-parquet results/top_sl_table.parquet \
+  --out results/annotated.parquet
+```
+
+- Fit EM model (Gaussian + logistic prior)
+```bash
+accmix model \
+  --input-parquet results/annotated.parquet \
+  --out-prefix results/RBP_Motif
+```
+Outputs: `<out>.model.parquet` with `prior_p` and `posterior_r`, and `<out>.model.json` with parameters.
+
+Notes
+
+- Dependencies: `polars`, `pyranges`, `metagene`, `numpy`, `scipy`, `pyarrow`, `numba`, `tqdm` (installed via `pip install -e .`).
+- The CLI exposes key flags from the original scripts to maintain identical behavior.
