@@ -1,4 +1,21 @@
-<img src="assets/accmix-logo.svg" alt="accmix logo" width="420">
+<p align="center">
+  <img src="assets/accmix-logo.svg" alt="accmix logo" width="360" />
+  <br>
+  <sub>Under active development — interfaces may evolve</sub>
+  <br/>
+  <a href="https://github.com/yangli04/RAD-seq_EM_model" target="_blank">
+    <img src="https://img.shields.io/github/stars/yangli04/RAD-seq_EM_model?style=social" alt="GitHub Stars" />
+  </a>
+  <a href="https://github.com/yangli04/RAD-seq_EM_model" target="_blank">
+    <img src="https://img.shields.io/github/forks/yangli04/RAD-seq_EM_model?style=social" alt="GitHub Forks" />
+  </a>
+  <a href="https://github.com/yangli04/RAD-seq_EM_model/issues" target="_blank">
+    <img src="https://img.shields.io/github/issues/yangli04/RAD-seq_EM_model" alt="GitHub Issues" />
+  </a>
+  <a href="https://github.com/yangli04/RAD-seq_EM_model/blob/main/LICENSE" target="_blank">
+    <img src="https://img.shields.io/badge/license-CC%20BY--NC--ND%204.0-blue" alt="License: CC BY-NC-ND 4.0" />
+  </a>
+</p>
 
 # accmix: Accessibility Mixture Model
 
