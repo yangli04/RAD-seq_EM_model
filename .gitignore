@@ -1,8 +1,11 @@
 *.png
 *.pdf
 *.tsv
+*.fa
 *.parquet
 *.bed
 *.pyc
 *.fna
 .snakemake*
+test/*
+data/*
