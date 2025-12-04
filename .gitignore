@@ -9,5 +9,8 @@
 .snakemake*
 test/*
 data/*
+!data/*/
+data/*/**
+!data/*/.gitkeep
 *__pycache__/*
 results/*
