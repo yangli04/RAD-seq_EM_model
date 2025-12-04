@@ -74,8 +74,8 @@ def scan_pwm_cmd(
 
 @app.command("annotate-acc", help="Compute accessibility-derived s_l from AS native/fixed and PWM top table.")
 def annotate_acc_cmd(
-    ASnative: Path = typer.Option(..., "-n", "--ASnative", help="AS native bed6 file."),
-    ASfixed: Path = typer.Option(..., "-f", "--ASfixed", help="AS fixed bed6 file."),
+    ASnative: Path = typer.Option(..., "-n", "--ASnative", help="AS native file contains chr, position, strand, score, depth, and motif information (motif information is not used)."),
+    ASfixed: Path = typer.Option(..., "-f", "--ASfixed", help="AS fixed bed6 file contains chr, start, end, strand, score, and depth."),
     toptable: Path = typer.Option(..., "-t", "--toptable", help="PWM scan top-table TSV.gz with inner/outer scores."),
     out: Optional[Path] = typer.Option(
         None,
