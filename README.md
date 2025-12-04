@@ -6,6 +6,9 @@
   <a href="https://github.com/yangli04/RAD-seq_EM_model/blob/main/LICENSE" target="_blank">
     <img src="https://img.shields.io/badge/license-CC%20BY--NC--ND%204.0-blue" alt="License: CC BY-NC-ND 4.0" />
   </a>
+  <a href="https://pypi.org/project/accmix/" target="_blank">
+    <img src="https://img.shields.io/pypi/v/accmix.svg" alt="PyPI version" />
+  </a>
 </p>
 
 # accmix: Accessibility Mixture Model
