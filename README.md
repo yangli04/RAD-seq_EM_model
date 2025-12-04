@@ -14,8 +14,14 @@ CLI toolkit to (1) scan PWMs genome-wide, (2) compute accessibility-derived site
 
 ## Installation
 
+Install from github repository
 ```bash
 pip install -e .
+```
+
+Install from pypi
+```bash
+pip install accmix
 ```
 
 ## Data layout
@@ -90,7 +96,7 @@ Outputs:
 
 ## Notes
 
-- Dependencies (installed via `pip install -e .`): `polars`, `pyranges`, `metagene`, `numpy`, `scipy`, `pyarrow`, `numba`, `tqdm`, `typer[all]`, `scikit-learn`, `matplotlib`, `seaborn`, `pandas`.
+- Dependencies: `polars`, `pyranges`, `metagene`, `numpy`, `scipy`, `pyarrow`, `numba`, `tqdm`, `typer[all]`, `scikit-learn`, `matplotlib`, `seaborn`, `pandas`.
 - The CLI options mirror the underlying scripts; run `accmix <command> --help` for full details.
 
 

@@ -3,15 +3,16 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List
 
-import polars as pl
 import numpy as np
 import pyranges as pr
+import polars as pl
+import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
 
 from accmix.model_core import read_polars_input
-from accmix import utils as em_utils
+from accmix import utils as utils
 
 
 def _load_config(path: str) -> Dict[str, Any]:
@@ -60,10 +61,13 @@ def run_evaluation(config_path: str) -> None:
     file_title = f"{rbp_name}_{motif_id}"
 
     motif_df = pl.read_parquet(motif_file)
-    clipseq_df = pl.read_csv(
+
+    # Read CLIP-seq with pandas (more robust to odd encodings), then convert to Polars
+    clipseq_pd = pd.read_csv(
         clipseq_file,
-        separator="\t",
-        new_columns=[
+        sep="\t",
+        header=None,
+        names=[
             "Chromosome",
             "Start",
             "End",
@@ -76,6 +80,7 @@ def run_evaluation(config_path: str) -> None:
             "datasource",
         ],
     )
+    clipseq_df = pl.from_pandas(clipseq_pd)
 
     motif_df = motif_df.with_columns([
         pl.col("id").str.split("_").alias("id_split")
@@ -104,11 +109,12 @@ def run_evaluation(config_path: str) -> None:
 
     pipseq_pr = pr.PyRanges(pl.read_parquet(pipseq_file).to_pandas())
 
-    intersections = motif_pr.intersect(clipseq_pr, strandedness="same")
-    pipintersections = motif_pr.intersect(pipseq_pr, strandedness="same")
+    # pyranges >= 0.3 uses `overlap` instead of `intersect`
+    intersections = motif_pr.overlap(clipseq_pr, strand_behavior="same")
+    pipintersections = motif_pr.overlap(pipseq_pr, strand_behavior="same")
 
-    intersected_ids = set(intersections.df["id"].tolist()) if len(intersections) > 0 else set()
-    pipintersected_ids = set(pipintersections.df["id"].tolist()) if len(pipintersections) > 0 else set()
+    intersected_ids = set(intersections["id"].tolist()) if len(intersections) > 0 else set()
+    pipintersected_ids = set(pipintersections["id"].tolist()) if len(pipintersections) > 0 else set()
 
     motif_df = motif_df.with_columns([
         pl.when(pl.col("id").is_in(list(intersected_ids)))
@@ -170,10 +176,10 @@ def run_evaluation(config_path: str) -> None:
         pl.Series("prior_p", p),
         pl.Series("posterior_r", r),
     ])
-    out_df = em_utils.change_label(out_df)
+    out_df = utils.change_label(out_df)
 
-    roc_auc = em_utils.plot_em_auc(out_df, file_title, save_path=None)
-    roc_auc_control = em_utils.plot_em_auc_control(out_df)
+    roc_auc = utils.plot_em_auc(out_df, file_title, save_path=None)
+    roc_auc_control = utils.plot_em_auc_control(out_df)
 
     expanded_feature_columns = feature_columns + [
         "prior_p",
@@ -187,7 +193,7 @@ def run_evaluation(config_path: str) -> None:
     plots_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    em_utils.heatmap_plot(
+    utils.heatmap_plot(
         data=out_df,
         columns=expanded_feature_columns,
         no_normalize_columns=skip_normalization + ["source"],
@@ -198,7 +204,7 @@ def run_evaluation(config_path: str) -> None:
 
     dist_dir = plots_dir / "distribution"
     dist_dir.mkdir(parents=True, exist_ok=True)
-    test_dict = em_utils.compute_qq_validate_distribution(
+    test_dict = utils.compute_qq_validate_distribution(
         out_df,
         save_figure_path=str(dist_dir / f"{file_title}.dist.val.png"),
     )
@@ -223,7 +229,7 @@ def run_evaluation(config_path: str) -> None:
     fpr_source_s_l, tpr_source_s_l, _ = roc_curve(y_source, y_source_proba_s_l)
     auc_source_s_l = auc(fpr_source_s_l, tpr_source_s_l)
 
-    beta_results_df_s_l, beta_results_df, metadata_df = em_utils.save_analysis_results(
+    beta_results_df_s_l, beta_results_df, metadata_df = utils.save_analysis_results(
         model,
         lr_source.coef_[0],
         lr_source_s_l.coef_[0],

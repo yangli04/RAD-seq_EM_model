@@ -1,5 +1,5 @@
 {
-  "input_data_parquet": "results/example_motif.parquet",
+  "input_data_parquet": "results/test_annASTSS.parquet",
   "clipseq_bed": "data/clipseq/ELAVL1_HeLa.bed",
   "pipseq_parquet": "data/evaluation/PIPseq_HeLa.parquet",
   "rbp_name": "ExampleRBP",
@@ -7,5 +7,6 @@
   "motif_logo": "",
   "output_root": "results",
   "score_phastcons100_threshold": 1.0,
-  "motif_range": 50
+  "motif_range": 50,
+  "model_json": "results/RBP_Motif.20251204_145147.model.json"
 }
