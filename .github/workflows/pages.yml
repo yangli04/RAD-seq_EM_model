@@ -4,6 +4,13 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,5 +29,8 @@ jobs:
           pip install -r docs/requirements.txt
 
       - name: Build and deploy with MkDocs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdocs gh-deploy --force
