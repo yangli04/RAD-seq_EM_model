@@ -17,10 +17,8 @@ nav:
   - Tutorial: tutorial.md
   - Reproducibility: reproducibility.md
   - CLI: cli.md
-  - Examples: examples.md
   - Data: data.md
   - Development: development.md
-  - API: api.md
   - Changelog: changelog.md
 
 plugins:
