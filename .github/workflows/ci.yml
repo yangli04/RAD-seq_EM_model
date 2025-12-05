@@ -16,12 +16,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
-      - name: Install dependencies (if available)
+      - name: Install dependencies (including docs + metagene)
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f docs/requirements.txt ]; then pip install -r docs/requirements.txt; fi
+          pip install git+https://github.com/y9c/metagene.git
           if [ -f pyproject.toml ]; then pip install .; fi
 
       - name: Lint (optional)
@@ -32,4 +34,4 @@ jobs:
 
       - name: Run tests (if any)
         run: |
-          if [ -d tests ]; then pytest -q; else echo "No tests/ directory"; fi
+          if [ -d tests ]; then pytest -q; elif [ -d test ]; then pytest -q test; else echo "No tests directory"; fi
