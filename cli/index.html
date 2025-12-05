@@ -16,7 +16,7 @@
         <link rel="prev" href="../reproducibility/">
       
       
-        <link rel="next" href="../examples/">
+        <link rel="next" href="../data/">
       
       
         
@@ -286,25 +286,6 @@
   
   
     <li class="md-tabs__item">
-      <a href="../examples/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Examples
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
       <a href="../data/" class="md-tabs__link">
         
   
@@ -331,25 +312,6 @@
     
   
   Development
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../api/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  API
 
       </a>
     </li>
@@ -595,10 +557,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#scan-pwm-and-gc" class="md-nav__link">
+  <a href="#accmix-scan" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scan PWM and GC
+        accmix scan
       
     </span>
   </a>
@@ -606,10 +568,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#annotate-accessibility-compute-s_l" class="md-nav__link">
+  <a href="#accmix-annotate-acc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotate accessibility (compute s_l)
+        accmix annotate-acc
       
     </span>
   </a>
@@ -617,10 +579,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#annotate-tss-conservation-tpm" class="md-nav__link">
+  <a href="#accmix-annotate-tss" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotate TSS / conservation / TPM
+        accmix annotate-tss
       
     </span>
   </a>
@@ -628,10 +590,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fit-em-model-gaussian-logistic-prior" class="md-nav__link">
+  <a href="#accmix-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fit EM model (Gaussian + logistic prior)
+        accmix model
       
     </span>
   </a>
@@ -639,10 +601,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#evaluate-model" class="md-nav__link">
+  <a href="#accmix-evaluate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Evaluate model
+        accmix evaluate
       
     </span>
   </a>
@@ -653,33 +615,6 @@
   
 </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../examples/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Examples
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -726,33 +661,6 @@
     
   
     Development
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API
   
 
     
@@ -819,10 +727,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#scan-pwm-and-gc" class="md-nav__link">
+  <a href="#accmix-scan" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scan PWM and GC
+        accmix scan
       
     </span>
   </a>
@@ -830,10 +738,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#annotate-accessibility-compute-s_l" class="md-nav__link">
+  <a href="#accmix-annotate-acc" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotate accessibility (compute s_l)
+        accmix annotate-acc
       
     </span>
   </a>
@@ -841,10 +749,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#annotate-tss-conservation-tpm" class="md-nav__link">
+  <a href="#accmix-annotate-tss" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotate TSS / conservation / TPM
+        accmix annotate-tss
       
     </span>
   </a>
@@ -852,10 +760,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fit-em-model-gaussian-logistic-prior" class="md-nav__link">
+  <a href="#accmix-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fit EM model (Gaussian + logistic prior)
+        accmix model
       
     </span>
   </a>
@@ -863,10 +771,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#evaluate-model" class="md-nav__link">
+  <a href="#accmix-evaluate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Evaluate model
+        accmix evaluate
       
     </span>
   </a>
@@ -894,58 +802,87 @@
 
 
 <h1 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h1>
-<p>The main entry point is <code>accmix</code> with subcommands.</p>
-<h2 id="scan-pwm-and-gc">Scan PWM and GC<a class="headerlink" href="#scan-pwm-and-gc" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>scan<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-f<span class="w"> </span>data/fasta/test.fa<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-p<span class="w"> </span>data/pwms/M00124_example.txt<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span>results/M00124_example
+<p>The main entry point is <code>accmix</code> with these subcommands. Run <code>accmix &lt;cmd&gt; --help</code> for the authoritative list. Below are the parameters, defaults, and meanings.</p>
+<h2 id="accmix-scan"><code>accmix scan</code><a class="headerlink" href="#accmix-scan" title="Permanent link">&para;</a></h2>
+<p>Scan a genome FASTA with a PWM and compute inner/outer scores.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>scan<span class="w"> </span>-f<span class="w"> </span>&lt;fasta&gt;<span class="w"> </span>-p<span class="w"> </span>&lt;pwm.txt&gt;<span class="w"> </span><span class="o">[</span>-o<span class="w"> </span>&lt;out_prefix&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
 </code></pre></div>
-<h2 id="annotate-accessibility-compute-s_l">Annotate accessibility (compute s_l)<a class="headerlink" href="#annotate-accessibility-compute-s_l" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>annotate-acc<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>data/AS/ANC1C.hisat3n_table.bed6<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-f<span class="w"> </span>data/AS/ANC1xC.hisat3n_table.bed6<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-t<span class="w"> </span>results/M00124_example_topA.tsv.gz<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span>results/M00124_example_sl.parquet
-</code></pre></div>
-<p>Key options:</p>
+<p>Options</p>
 <ul>
-<li><code>--M</code> inner flank size (default: 50)</li>
-<li><code>--N</code> outer flank size (default: 500); outer flank length is <code>N - M</code></li>
+<li><code>-f, --fasta PATH</code> (required): Genome FASTA (.fa/.fa.gz).</li>
+<li><code>-p, --pwm PATH</code> (required): PWM text file with columns Pos,A,C,G,T/U.</li>
+<li><code>-o, --out-prefix PATH</code>: Output prefix (default: <code>results/&lt;pwm&gt;.&lt;timestamp&gt;</code>).</li>
+<li><code>-M INT</code> (default 50): Inner half-width in bp.</li>
+<li><code>-N INT</code> (default 500): Outer half-width in bp; must be &gt; <code>M</code>.</li>
+<li><code>-A INT</code> (default 2_000_000): Keep top-A entries per strand.</li>
+<li><code>-B INT</code> (default 2_000_000): Keep bottom-B entries per strand.</li>
+<li><code>-g, --bg "A,C,G,T"</code>: Background base probabilities for LLR (overridden by <code>-G</code>).</li>
+<li><code>-G, --bg-from-fasta</code>: Estimate background from the provided FASTA.</li>
 </ul>
-<h2 id="annotate-tss-conservation-tpm">Annotate TSS / conservation / TPM<a class="headerlink" href="#annotate-tss-conservation-tpm" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>annotate-tss<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-i<span class="w"> </span>results/M00124_example_sl.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span>results/M00124_example_annotated.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-r<span class="w"> </span>data/evaluation/RNAseq_HeLa_TPM.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-c<span class="w"> </span>data/evaluation/phastCons100way.bed.gz<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-p<span class="w"> </span>data/evaluation/phastCons100way.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-y<span class="w"> </span>data/evaluation/phyloP100way.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-R<span class="w"> </span>data/fasta/test.fa
+<p>Outputs: <code>results/&lt;prefix&gt;_topA.tsv.gz</code>, <code>results/&lt;prefix&gt;_botB.tsv.gz</code>.</p>
+<h2 id="accmix-annotate-acc"><code>accmix annotate-acc</code><a class="headerlink" href="#accmix-annotate-acc" title="Permanent link">&para;</a></h2>
+<p>Compute accessibility-derived <code>s_l</code> from AS native/fixed and PWM top table.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>annotate-acc<span class="w"> </span>-n<span class="w"> </span>&lt;ASnative&gt;<span class="w"> </span>-f<span class="w"> </span>&lt;ASfixed&gt;<span class="w"> </span>-t<span class="w"> </span>&lt;toptable&gt;<span class="w"> </span><span class="o">[</span>-o<span class="w"> </span>&lt;out&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
 </code></pre></div>
-<h2 id="fit-em-model-gaussian-logistic-prior">Fit EM model (Gaussian + logistic prior)<a class="headerlink" href="#fit-em-model-gaussian-logistic-prior" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>model<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-i<span class="w"> </span>results/M00124_example_annotated.parquet<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span>results/RBP_Motif<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-r<span class="w"> </span>ExampleRBP<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-m<span class="w"> </span>M00124
-</code></pre></div>
-<h2 id="evaluate-model">Evaluate model<a class="headerlink" href="#evaluate-model" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>path/to/config.json
-</code></pre></div>
-<p>Config keys (JSON):</p>
+<p>Options</p>
 <ul>
-<li><code>input_data_parquet</code>: annotated input used for modeling</li>
-<li><code>clipseq_bed</code>: CLIP-seq peaks BED path</li>
-<li><code>pipseq_parquet</code>: PIP-seq dataset parquet path (optional)</li>
-<li><code>rbp_name</code>: RBP label</li>
-<li><code>motif_id</code>: motif identifier</li>
-<li><code>motif_logo</code>: path to motif logo image (optional)</li>
-<li><code>output_root</code>: output directory</li>
-<li><code>model_json</code>: path to fitted model JSON</li>
-<li><code>score_phastcons100_threshold</code>: conservation score threshold for reporting</li>
-<li><code>motif_range</code>: window size around motifs for evaluation</li>
+<li><code>-n, --ASnative PATH</code> (required): AS native file (chr, position, strand, score, depth, motif info).</li>
+<li><code>-f, --ASfixed PATH</code> (required): AS fixed BED6 (chr, start, end, strand, score, depth).</li>
+<li><code>-t, --toptable PATH</code> (required): PWM scan top-table TSV.gz with inner/outer scores.</li>
+<li><code>-o, --out PATH</code>: Output parquet (default: <code>results/sl.&lt;timestamp&gt;.parquet</code>).</li>
+<li><code>-M INT</code> (default 50): Inner half-width used in scanning.</li>
+<li><code>-N INT</code> (default 500): Outer half-width used in scanning.</li>
 </ul>
+<p>Output: parquet with <code>s_l</code> per site.</p>
+<h2 id="accmix-annotate-tss"><code>accmix annotate-tss</code><a class="headerlink" href="#accmix-annotate-tss" title="Permanent link">&para;</a></h2>
+<p>Add TSS proximity, conservation, and TPM annotations to sites.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>annotate-tss<span class="w"> </span>-i<span class="w"> </span>&lt;input.parquet&gt;<span class="w"> </span><span class="o">[</span>-o<span class="w"> </span>&lt;out&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+<p>Options</p>
+<ul>
+<li><code>-i, --input-parquet PATH</code> (required): Input parquet (e.g., output of <code>annotate-acc</code>).</li>
+<li><code>-o, --out PATH</code>: Output parquet (default: <code>results/annotated.&lt;timestamp&gt;.parquet</code>).</li>
+<li><code>-r, --rna-seq-parquet PATH</code> (default <code>data/expression/ENCFF364YCB_HeLa_RNAseq_Transcripts_count_curated.parquet</code>): Transcript TPM parquet.</li>
+<li><code>-c, --phastcons-bed PATH</code> (default <code>data/conservation_score/phastCons100way1.bed</code>): phastCons BED for regional conservation.</li>
+<li><code>-p, --phastcons-parquet PATH</code> (default <code>data/conservation_score/hg38.phastCons100way.1.parquet</code>): Base-level phastCons scores.</li>
+<li><code>-y, --phylop-parquet PATH</code> (default <code>data/conservation_score/hg38.phyloP100way.1.parquet</code>): Base-level phyloP scores.</li>
+<li><code>-R, --reference TEXT</code> (default <code>GRCh38</code>): Reference genome name.</li>
+</ul>
+<p>Output: parquet with added TSS distance, conservation, and expression features.</p>
+<h2 id="accmix-model"><code>accmix model</code><a class="headerlink" href="#accmix-model" title="Permanent link">&para;</a></h2>
+<p>Fit Gaussian EM with logistic prior and write priors/posteriors plus model JSON.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>model<span class="w"> </span>-i<span class="w"> </span>&lt;annotated.parquet&gt;<span class="w"> </span>-o<span class="w"> </span>&lt;out_prefix&gt;<span class="w"> </span>-r<span class="w"> </span>&lt;RBP&gt;<span class="w"> </span>-m<span class="w"> </span>&lt;MotifID&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+<p>Options</p>
+<ul>
+<li><code>-i, --input-parquet PATH</code> (required): Annotated parquet with <code>id</code>, <code>s_l</code>, and features.</li>
+<li><code>-o, --out-prefix PATH</code>: Output prefix (default: <code>results/&lt;rbp&gt;_&lt;motif&gt;.&lt;timestamp&gt;</code>).</li>
+<li><code>-r, --rbp-name TEXT</code> (default <code>RBP</code>): RBP label for outputs.</li>
+<li><code>-m, --motif-id TEXT</code> (default <code>Motif</code>): Motif ID label for outputs.</li>
+<li><code>-F, --feat-cols TEXT</code>: Comma-separated feature names (default: built-in set).</li>
+<li><code>-s, --site-col TEXT</code> (default <code>id</code>): Site identifier column.</li>
+<li><code>-S, --s-col TEXT</code> (default <code>s_l</code>): Accessibility score column.</li>
+<li><code>-M, --mode TEXT</code> (default <code>em</code>): Modeling mode (currently only <code>em</code>).</li>
+</ul>
+<p>Outputs: <code>&lt;prefix&gt;.model.parquet</code> (priors/posteriors) and <code>&lt;prefix&gt;.model.json</code> (parameters).</p>
+<h2 id="accmix-evaluate"><code>accmix evaluate</code><a class="headerlink" href="#accmix-evaluate" title="Permanent link">&para;</a></h2>
+<p>Evaluate fitted models against CLIP/PIP-seq using a JSON config.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>&lt;config.json&gt;
+</code></pre></div>
+<p>Config keys</p>
+<ul>
+<li><code>input_data_parquet</code> (required): Annotated input parquet used for modeling.</li>
+<li><code>clipseq_bed</code> (required): CLIP-seq peaks BED.</li>
+<li><code>pipseq_parquet</code> (required): PIP-seq parquet.</li>
+<li><code>rbp_name</code>: RBP label.</li>
+<li><code>motif_id</code>: Motif identifier.</li>
+<li><code>motif_logo</code>: Path to motif logo image (optional, for plots).</li>
+<li><code>output_root</code>: Output directory (default <code>results</code>).</li>
+<li><code>model_json</code> (required): Path to fitted model JSON.</li>
+<li><code>score_phastcons100_threshold</code>: Conservation cutoff (float, default 1.0).</li>
+<li><code>motif_range</code>: Window size around motifs for evaluation (int, default 50).</li>
+</ul>
+<p>Outputs: plots under <code>results/plots/</code>, logs and tables under <code>results/logs/</code>.</p>
 
 
 
