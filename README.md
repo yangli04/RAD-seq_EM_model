@@ -27,6 +27,12 @@ Install from pypi
 pip install accmix
 ```
 
+## Documentation
+
+Full user and API documentation is available at:
+
+- https://yangli04.github.io/RAD-seq_EM_model/
+
 ## Data layout
 
 Example inputs are referenced under `data/...`:
