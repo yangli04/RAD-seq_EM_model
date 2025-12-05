@@ -1,0 +1,42 @@
+site_name: accmix
+site_description: Accessibility Mixture Model toolkit
+site_url: https://yangli04.github.io/RAD-seq_EM_model/
+repo_url: https://github.com/yangli04/RAD-seq_EM_model
+repo_name: yangli04/RAD-seq_EM_model
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.instant
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Tutorial: tutorial.md
+  - Reproducibility: reproducibility.md
+  - CLI: cli.md
+  - Examples: examples.md
+  - Data: data.md
+  - Development: development.md
+  - API: api.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            docstring_style: google
+            merge_init_into_class: true
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - pymdownx.superfences
+  - pymdownx.details
