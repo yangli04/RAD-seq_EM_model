@@ -77,7 +77,6 @@ def main() -> None:
     pipseq_parquet = str(base_dir / "data" / "evaluation" / "PIPseq_HeLa.parquet")
 
     rbp_df = _build_rbp_table(midway_results_dir, rbp_info_path, clipseq_glob)
-
     for idx in range(len(rbp_df)):
         try:
             motif_file = rbp_df["motif_file"][idx]
@@ -88,13 +87,14 @@ def main() -> None:
             file_title = f"{rbp_name}_{motif_id}"
             print(f"[accmix batch eval] Evaluating model for {file_title}")
 
-            # Model JSON produced by `accmix model` / accmix.model_core.fit_model.
+            # Model JSON produced by `accmix model` / accmix.model_core.fit_model. 
             model_json_candidates = sorted(
                 glob.glob(str(base_dir / "results" / f"{file_title}*.model.json"))
             )
             if not model_json_candidates:
                 print(f"[accmix batch eval] No model JSON found for {file_title}, skipping.")
                 continue
+            # Get newest model here. 
             model_json = model_json_candidates[-1]
 
             # Input parquet should be the same file that was used for fitting.
