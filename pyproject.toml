@@ -1,6 +1,6 @@
 [project]
 name = "accmix"
-version = "0.1.0"
+version = "0.1.1"
 description = "RAD-seq EM mixture with logistic prior: scan, annotate, model, diff"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -10,7 +10,7 @@ dependencies = [
   "polars>=0.20",
   "numpy>=1.24",
   "scipy>=1.10",
-  "pyranges>=0.0.129",
+  "pyranges1>=1.1.6",
   "metagene>=0.0.15",
   "scikit-learn>=1.2",
   "matplotlib>=3.7",
