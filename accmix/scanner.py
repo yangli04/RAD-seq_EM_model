@@ -313,13 +313,13 @@ def aggregate_regions_on_sequence(seq: str, name: str, strand: str,
                 if neg > botB_heap[0][0]:
                     heapq.heapreplace(botB_heap, (neg, rec))
 
-def write_tsv_gz(path: str, rows: List[Tuple]):
+def write_tsv_gz_stream(path: str, row_iter: Iterable[Tuple]):
     with gzip.open(path, "wt") as gz:
         gz.write(
             "chrom\tpos1\tstrand\tinner_mean_logPWM\touter_mean_logPWM\t"
             "GC_inner_pct\tGC_outer_pct\tkmer_count_inner\tkmer_count_outer\n"
         )
-        for r in rows:
+        for r in row_iter:
             gz.write("\t".join(map(str, r)) + "\n")
 
 def scan_pwm(
@@ -351,8 +351,11 @@ def scan_pwm(
     botB_heap: List[Tuple[float, tuple]] = []
 
     contig_len = {}
+    contig_order = {}
     for name, seq_plus in fasta_records(fasta):
         contig_len[name] = len(seq_plus)
+        if name not in contig_order:
+            contig_order[name] = len(contig_order)
         sys.stderr.write(f"[info] Processing {name} len={len(seq_plus):,} L={logp.shape[0]} M={M} N={N}\n")
         aggregate_regions_on_sequence(seq_plus, name, '+', logp, fwd_table,
                                       M, N, topA_heap, botB_heap, A, B)
@@ -378,10 +381,22 @@ def scan_pwm(
     topA_rows = remap_rows(topA)
     botB_rows = remap_rows(botB)
 
+    # Partition rows per chromosome to avoid one huge sort; then stream in FASTA order.
+    def per_chrom_sorted_rows(rows: List[Tuple]):
+        buckets = {}
+        for r in rows:
+            buckets.setdefault(r[0], []).append(r)
+        for chrom, order in sorted(contig_order.items(), key=lambda x: x[1]):
+            if chrom in buckets:
+                lst = buckets[chrom]
+                lst.sort(key=lambda x: x[1])  # sort by pos1 within chrom
+                for rec in lst:
+                    yield rec
+
     outA = f"{out_prefix}_topA.tsv.gz"
     outB = f"{out_prefix}_botB.tsv.gz"
-    write_tsv_gz(outA, topA_rows)
-    write_tsv_gz(outB, botB_rows)
+    write_tsv_gz_stream(outA, per_chrom_sorted_rows(topA_rows))
+    write_tsv_gz_stream(outB, per_chrom_sorted_rows(botB_rows))
     sys.stderr.write(f"[done] Wrote {outA} and {outB}\n")
 
 
