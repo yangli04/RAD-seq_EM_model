@@ -217,16 +217,44 @@ def model_cmd(
 
 @app.command("evaluate", help="Evaluate fitted models against CLIP/PIP-seq data.")
 def evaluate_cmd(
-    config: Path = typer.Option(
+    model_parquet: Path = typer.Option(
         ...,
-        "-c",
-        "--config",
-        help="JSON config describing motif parquet, CLIP/PIP paths, model JSON, and outputs.",
+        "-M",
+        "--model-parquet",
+        help="Model parquet produced by 'accmix model' (contains prior/posterior).",
     ),
+    clipseq_bed: Path = typer.Option(
+        ...,
+        "-b",
+        "--clipseq-bed",
+        help="CLIP-seq peaks BED path.",
+    ),
+    pipseq_parquet: Path = typer.Option(
+        ...,
+        "-p",
+        "--pipseq-parquet",
+        help="PIP-seq parquet path.",
+    ),
+    rbp_name: str = typer.Option("RBP", "-r", "--rbp-name", help="RBP label for titles/filenames."),
+    motif_id: str = typer.Option("Motif", "-m", "--motif-id", help="Motif ID for titles/filenames."),
+    output_root: Path = typer.Option(Path("results"), "-o", "--output-root", help="Directory to write plots/logs."),
+    motif_logo: Optional[Path] = typer.Option(None, "-L", "--motif-logo", help="Optional motif logo image."),
+    score_phastcons100_threshold: float = typer.Option(1.0, "-t", "--score-phastcons100-threshold", help="Conservation score threshold."),
+    motif_range: int = typer.Option(50, "-R", "--motif-range", help="Half-window around site position for overlaps."),
 ) -> None:
-    """Run the evaluation pipeline using a configuration file."""
+    """Run the evaluation pipeline using direct CLI options."""
 
-    evaluate.run_evaluation(str(config))
+    evaluate.run_evaluation(
+        model_parquet=str(model_parquet),
+        clipseq_bed=str(clipseq_bed),
+        pipseq_parquet=str(pipseq_parquet),
+        rbp_name=rbp_name,
+        motif_id=motif_id,
+        output_root=str(output_root),
+        motif_logo=str(motif_logo) if motif_logo else None,
+        score_phastcons100_threshold=score_phastcons100_threshold,
+        motif_range=motif_range,
+    )
 
 
 def main() -> None:

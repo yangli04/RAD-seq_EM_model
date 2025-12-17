@@ -257,7 +257,7 @@ def change_label(out_df: pl.DataFrame) -> pl.DataFrame:
 
 
 def save_analysis_results(
-    model: Dict[str, Any],
+    model: Dict[str, Any] | None,
     source_coefs: np.ndarray,
     source_coefs_s_l: np.ndarray,
     source_intercept: float,
@@ -312,7 +312,11 @@ def save_analysis_results(
         prec = float(p / (p + fp + 1e-12))
         return prec, float(fpr[idx]), float(tpr[idx]), thr_sel
 
-    beta_em = model["beta"]
+    if model is not None and isinstance(model, dict) and "beta" in model:
+        beta_em = model["beta"]
+    else:
+        # Fallback: fill with NaNs when model params are unavailable
+        beta_em = [float("nan")] * (len(feature_columns) + 1)
     beta_lr = np.concatenate([[source_intercept], source_coefs])
     beta_lr_s_l = np.concatenate([[source_intercept_s_l], source_coefs_s_l])
 

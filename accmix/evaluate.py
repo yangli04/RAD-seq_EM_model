@@ -1,7 +1,6 @@
 from __future__ import annotations
-import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import List, Optional
 
 import numpy as np
 import pyranges as pr
@@ -15,56 +14,45 @@ from accmix.model_core import read_polars_input
 from accmix import utils as utils
 
 
-def _load_config(path: str) -> Dict[str, Any]:
-    p = Path(path)
-    text = p.read_text()
-    # Simple heuristic: JSON only for now (can extend to TOML/YAML later)
-    return json.loads(text)
+def run_evaluation(
+    model_parquet: str,
+    clipseq_bed: str,
+    pipseq_parquet: str,
+    rbp_name: str,
+    motif_id: str,
+    output_root: str,
+    motif_logo: Optional[str] = None,
+    score_phastcons100_threshold: float = 1.0,
+    motif_range: int = 50,
+) -> None:
+    """Run evaluation pipeline.
 
-
-def run_evaluation(config_path: str) -> None:
-    """Run evaluation pipeline based on a JSON config.
-
-        The config schema (JSON):
-        {
-            "input_data_parquet": "path/to/RBP_Motif.model.parquet",  # fitted model data (motif_files from run_mixture_model.py)
-            "clipseq_bed": "path/to/clipseq.bed",
-            "pipseq_parquet": "path/to/PIPseq.parquet",
-            "rbp_name": "RBPName",
-            "motif_id": "M00001",
-            "motif_logo": "path/to/logo.png",
-            "output_root": "results",                                  # for plots/logs
-            "model_json": "results/RBP_Motif.model.json",              # trained model parameters
-            "score_phastcons100_threshold": 1.0,
-            "motif_range": 50
-        }
+    Parameters
+    - model_parquet: Parquet produced by `accmix model` containing prior/posterior.
+    - clipseq_bed: CLIP-seq peaks BED path.
+    - pipseq_parquet: PIP-seq parquet path.
+    - rbp_name: RBP label for titles/filenames.
+    - motif_id: Motif identifier for titles/filenames.
+    - output_root: Directory to write plots and logs.
+    - motif_logo: Optional logo to display on heatmaps.
+    - score_phastcons100_threshold: Threshold for class labeling logic.
+    - motif_range: Window half-size around site position for overlap checks.
     """
 
-    cfg = _load_config(config_path)
-    # Input data produced by the model step ("motif_files" in run_mixture_model.py)
-    motif_file = cfg["input_data_parquet"]
-    clipseq_file = cfg["clipseq_bed"]
-    pipseq_file = cfg["pipseq_parquet"]
-    rbp_name = cfg.get("rbp_name", "RBP")
-    motif_id = cfg.get("motif_id", "Motif")
-    motif_logo = cfg.get("motif_logo", None)
-    output_root = Path(cfg.get("output_root", "results"))
-    score_phastcons100_threshold = float(cfg.get("score_phastcons100_threshold", 1.0))
-    motif_range = int(cfg.get("motif_range", 50))
-    model_json_path = cfg.get("model_json")
-
-    if model_json_path is None:
-        raise SystemExit("Config must provide 'model_json' path to a trained model JSON produced by 'accmix model'.")
+    output_root = Path(output_root)
 
     output_root.mkdir(parents=True, exist_ok=True)
 
     file_title = f"{rbp_name}_{motif_id}"
 
-    motif_df = pl.read_parquet(motif_file)
+    df = pl.read_parquet(model_parquet)
+    missing_cols = [c for c in ("prior_p", "posterior_r", "id", "s_l") if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Model parquet missing required columns: {missing_cols}")
 
     # Read CLIP-seq with pandas (more robust to odd encodings), then convert to Polars
     clipseq_pd = pd.read_csv(
-        clipseq_file,
+        clipseq_bed,
         sep="\t",
         header=None,
         names=[
@@ -82,7 +70,7 @@ def run_evaluation(config_path: str) -> None:
     )
     clipseq_df = pl.from_pandas(clipseq_pd)
 
-    motif_df = motif_df.with_columns([
+    df = df.with_columns([
         pl.col("id").str.split("_").alias("id_split")
     ]).with_columns([
         pl.col("id_split").list.get(0).alias("Chromosome"),
@@ -90,12 +78,12 @@ def run_evaluation(config_path: str) -> None:
         pl.col("id_split").list.get(1).cast(pl.Int64).alias("Position"),
     ]).drop("id_split")
 
-    motif_df = motif_df.with_columns([
+    df = df.with_columns([
         (pl.col("Position") - motif_range).alias("Start"),
         (pl.col("Position") + motif_range).alias("End"),
     ])
 
-    motif_pr = pr.PyRanges(motif_df.to_pandas())
+    motif_pr = pr.PyRanges(df.to_pandas())
     clipseq_pr = pr.PyRanges(
         clipseq_df.select([
             "Chromosome",
@@ -107,7 +95,7 @@ def run_evaluation(config_path: str) -> None:
         ]).to_pandas()
     )
 
-    pipseq_pr = pr.PyRanges(pl.read_parquet(pipseq_file).to_pandas())
+    pipseq_pr = pr.PyRanges(pl.read_parquet(pipseq_parquet).to_pandas())
 
     # pyranges >= 0.3 uses `overlap` instead of `intersect`
     intersections = motif_pr.overlap(clipseq_pr, strand_behavior="same")
@@ -116,7 +104,7 @@ def run_evaluation(config_path: str) -> None:
     intersected_ids = set(intersections["id"].tolist()) if len(intersections) > 0 else set()
     pipintersected_ids = set(pipintersections["id"].tolist()) if len(pipintersections) > 0 else set()
 
-    motif_df = motif_df.with_columns([
+    df = df.with_columns([
         pl.when(pl.col("id").is_in(list(intersected_ids)))
         .then(pl.lit("clip_bound"))
         .when(
@@ -128,7 +116,7 @@ def run_evaluation(config_path: str) -> None:
         .alias("source"),
     ])
 
-    motif_df = motif_df.drop(["Chromosome", "Position", "Start", "End"])
+    df = df.drop(["Chromosome", "Position", "Start", "End"])
 
     feature_columns: List[str] = [
         "inner_mean_logPWM",
@@ -147,35 +135,16 @@ def run_evaluation(config_path: str) -> None:
         "score_phastcons100",
     ]
 
-    df, s, X, site_ids = read_polars_input(motif_df, "id", "s_l", feature_columns)
+    df_pl, s, X, site_ids = read_polars_input(df, "id", "s_l", feature_columns)
     X_zscore = X.copy()
     for i, col in enumerate(feature_columns):
         if col not in skip_normalization:
             col_zscore = stats.zscore(X[:, i])
             X_zscore[:, i] = np.nan_to_num(col_zscore, nan=0.0)
     X_zscore[:, 0] = 1
-
-    # Load trained model parameters and recompute prior_p/posterior_r
-    model = json.loads(Path(model_json_path).read_text())
-    beta = np.asarray(model["beta"], dtype=float)
-    mu0 = float(model["gaussian_params"]["mu0"])
-    sigma0 = float(model["gaussian_params"]["sigma0"])
-    mu1 = float(model["gaussian_params"]["mu1"])
-    sigma1 = float(model["gaussian_params"]["sigma1"])
-
     log_s = np.log(s + 1)
-    eta = X_zscore @ beta
-    p = 1.0 / (1.0 + np.exp(-eta))
-    eps = 1e-10
-    p_bg = stats.norm.pdf(log_s, mu0, sigma0 + eps)
-    p_sig = stats.norm.pdf(log_s, mu1, sigma1 + eps)
-    denominator = (1 - p) * p_bg + p * p_sig + eps
-    r = (p * p_sig) / denominator
 
-    out_df = df.with_columns([
-        pl.Series("prior_p", p),
-        pl.Series("posterior_r", r),
-    ])
+    out_df = df_pl
     out_df = utils.change_label(out_df)
 
     roc_auc = utils.plot_em_auc(out_df, file_title, save_path=None)
@@ -230,7 +199,7 @@ def run_evaluation(config_path: str) -> None:
     auc_source_s_l = auc(fpr_source_s_l, tpr_source_s_l)
 
     beta_results_df_s_l, beta_results_df, metadata_df = utils.save_analysis_results(
-        model,
+        None,
         lr_source.coef_[0],
         lr_source_s_l.coef_[0],
         lr_source.intercept_[0],
@@ -243,7 +212,7 @@ def run_evaluation(config_path: str) -> None:
         file_title,
         out_df,
         test_dict=test_dict,
-        motif_df=motif_df,
+        motif_df=df,
         output_dir=str(logs_dir),
     )
 
