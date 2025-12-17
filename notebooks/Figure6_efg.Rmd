@@ -21,12 +21,8 @@ library(rstatix)
 
 
 ```{r}
-files <- list.files("../results/logs/", pattern = "metadata.tsv", full.names = TRUE)
+files <- list.files("../results/logs/", pattern = "_nc_metadata.tsv", full.names = TRUE)
 df <- rbindlist(lapply(files, fread), use.names = TRUE, fill = TRUE)
-```
-
-
-```{r}
 plot_auc = df %>% pivot_longer(cols = c(auc_control, auc_em, auc_lr, auc_lr_sl),
                     names_to = "model", 
                     values_to = "AUC") %>%
@@ -38,55 +34,44 @@ plot_auc = df %>% pivot_longer(cols = c(auc_control, auc_em, auc_lr, auc_lr_sl),
                             )) %>%
       mutate(model = factor(model, levels = c("PWM model", "EM model", "Logistic regression","Logistic regresion with acc info")))
 
-p_all <- plot_auc %>%
-  mutate(model = recode(model,
-                        "EM model" = "EM",
-                        "PWM model" = "PWM",
-                        "Logistic regression" = "LR",
-                        "Logistic regresion with acc info" = "LR with sl")) %>%
-  ggplot(aes(x = model, y = AUC, fill = model)) +
-  geom_boxplot(outlier.shape = NA, width = 0.6, color = "black") +
-  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
-  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white", color = "black") +
-  scale_fill_manual(values = c("EM" = "#b2182b",
-                               "LR with sl" = "#91bfdb",
-                               "LR" = "#2166ac")) +
-  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
-  theme_minimal(base_size = 24) +
-  theme(
-    legend.position = "none",             # hide legend
-    axis.text.x = element_text(angle = 0),
-    plot.title = element_text(size = 18,  hjust = 0.5)
+plot_auc2 <- plot_auc %>%
+  mutate(
+    model = recode(model,
+      "EM model" = "EM (RAD-seq)",
+      "PWM model" = "PWM (control)",
+      "Logistic regression" = "LR",
+      "Logistic regresion with acc info" = "LR with sl"
+    ),
+    model = factor(model, levels = c("PWM (control)", "EM (RAD-seq)", "LR", "LR with sl"))
   )
-p_all
-p_PWM_EM <- plot_auc %>%
-  mutate(model = recode(model,
-                        "EM model" = "EM (RAD-seq)",
-                        "PWM model" = "PWM (control)",
-                        "Logistic regression" = "LR",
-                        "Logistic regresion with acc info" = "LR with sl")) %>%
-  filter(model %in% c("EM (RAD-seq)", "PWM (control)")) %>% 
-  ggplot(aes(x = model, y = AUC, fill = model)) +
-  geom_boxplot(outlier.shape = NA, width = 0.3, color = "black") +
-  
-  geom_line(aes(group = file_title), color = "gray60", alpha = 0.8, linewidth = 0.1) + 
-  
-  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
-  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white", color = "black") +
-  scale_fill_manual(values = c("EM (RAD-seq)" = "#b2182b",
-                               "LR with sl" = "#91bfdb",
-                               "LR" = "#2166ac")) +
-  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
-  theme_minimal(base_size = 24) +
-  theme(
-    legend.position = "none",             # hide legend
-    axis.text.x = element_text(angle = 0),
-    plot.title = element_text(size = 18,  hjust = 0.5)
-  )
-p_PWM_EM
-ggsave("../../final_figures/Fig6f_EM_PWM_model_comparison.pdf", width = 5, height = 5)
-```
 
+p_merged <- ggplot(plot_auc2, aes(x = model, y = AUC, fill = model)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6, color = "black") +
+  geom_line(
+    data = plot_auc2 %>% filter(model %in% c("PWM (control)", "EM (RAD-seq)")),
+    aes(group = file_title),
+    color = "gray60", alpha = 0.8, linewidth = 0.15
+  ) +
+  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_manual(values = c(
+    "EM (RAD-seq)" = "#b2182b",
+    "PWM (control)" = "#d9d9d9",
+    "LR" = "#2166ac",
+    "LR with sl" = "#91bfdb"
+  )) +
+  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
+  theme_minimal(base_size = 24) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 0),
+    plot.title = element_text(size = 18, hjust = 0.5)
+  )
+
+p_merged
+ggsave("./plots/improve_AUC.pdf")
+```
 
 AUC is not as good as logistic regression directly. 
 
@@ -118,34 +103,34 @@ df %>%
     legend.position = "right"
   )
 
-ggsave("../../final_figures/Fig6e_AUC_scatterplot_of_all.pdf")
+ggsave("./plots/AUC_scatterplot_of_all.pdf")
 ```
 
 Take a look at the beta values and see how each feature contribute to the final result. 
 Seems like TSS_Proximity and phastcons100 percent takes too much weight. Comparing to LR, the score_phastcons100 is the most import. If look at the raw beta value, we found the TSS_proximity is the most important (too much important.).
 ```{r}
-coef_dir   <- "../logs/"        # folder holding <sample>_beta_coefficients.tsv
+coef_dir   <- "../results/logs/"        # folder holding <sample>_beta_coefficients.tsv
 out_prefix <- "./routput/r_output"  # prefix for saved plots
 
 # --- 1) Read all coefficient files ---
-coef_files <- list.files(coef_dir, pattern = "_beta_coefficients\\.tsv$", full.names = TRUE)
+coef_files <- list.files(coef_dir, pattern = "_nc_beta_coefficients\\.tsv$", full.names = TRUE)
 read_coef <- function(f) {
   read_tsv(f, show_col_types = FALSE) %>%
-    mutate(sample = str_remove(basename(f), "_beta_coefficients\\.tsv$")) %>% 
-    mutate(sample = str_remove(basename(f), "_beta_coefficients_s_l\\.tsv$"))
+    mutate(sample = str_remove(basename(f), "_nc_beta_coefficients\\.tsv$")) %>% 
+    mutate(sample = str_remove(basename(f), "_nc_beta_coefficients_s_l\\.tsv$"))
 }
 coef_all <- map_dfr(coef_files, read_coef) %>%
   pivot_longer(c(beta_em, beta_lr), names_to = "model", values_to = "beta") %>%
   mutate(model = recode(model, beta_em = "EM", beta_lr = "LR")) %>%
   filter(feature != "intercept")
 
-coef_files <- list.files(coef_dir, pattern = "_beta_coefficients_s_l\\.tsv$", full.names = TRUE)
+coef_files <- list.files(coef_dir, pattern = "_nc_beta_coefficients_s_l\\.tsv$", full.names = TRUE)
 coef_s_l <- map_dfr(coef_files, read_coef) %>%
   pivot_longer(c(beta_lr_s_l), names_to = "model", values_to = "beta") %>%
   mutate(model = recode(model, beta_lr_s_l = "LR_with_sl")) %>%
   filter(feature != "intercept")
 
-coef_all <- rbind(coef_all, coef_s_l) %>% mutate(sample = gsub("_beta_coefficients.tsv", "", sample))
+coef_all <- rbind(coef_all, coef_s_l) %>% mutate(sample = gsub("_nc_beta_coefficients.tsv", "", sample))
 
 
 summary_raw <- coef_all %>%
@@ -206,3 +191,92 @@ p_box_l2
 
 ggsave("../../final_figures/Fig6g_beta_relative_distributioin.pdf", plot = p_box_l2, device = cairo_pdf, width = 6, height = 4)
 ```
+
+
+## For kd data analysis
+```{r}
+files <- list.files("../results/logs/", pattern = "_kd_metadata.tsv", full.names = TRUE)
+df <- rbindlist(lapply(files, fread), use.names = TRUE, fill = TRUE)
+plot_auc = df %>% pivot_longer(cols = c(auc_control, auc_em, auc_lr, auc_lr_sl),
+                    names_to = "model", 
+                    values_to = "AUC") %>%
+      mutate(model = recode(model,
+                            "auc_control" = "PWM model",
+                            "auc_em" = "EM model",
+                            "auc_lr" = "Logistic regression",
+                            "auc_lr_sl" = "Logistic regresion with acc info",
+                            )) %>%
+      mutate(model = factor(model, levels = c("PWM model", "EM model", "Logistic regression","Logistic regresion with acc info")))
+
+plot_auc2 <- plot_auc %>%
+  mutate(
+    model = recode(model,
+      "EM model" = "EM (RAD-seq)",
+      "PWM model" = "PWM (control)",
+      "Logistic regression" = "LR",
+      "Logistic regresion with acc info" = "LR with sl"
+    ),
+    model = factor(model, levels = c("PWM (control)", "EM (RAD-seq)", "LR", "LR with sl"))
+  )
+
+p_merged <- ggplot(plot_auc2, aes(x = model, y = AUC, fill = model)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6, color = "black") +
+  geom_line(
+    data = plot_auc2 %>% filter(model %in% c("PWM (control)", "EM (RAD-seq)")),
+    aes(group = file_title),
+    color = "gray60", alpha = 0.8, linewidth = 0.15
+  ) +
+  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_manual(values = c(
+    "EM (RAD-seq)" = "#b2182b",
+    "PWM (control)" = "#d9d9d9",
+    "LR" = "#2166ac",
+    "LR with sl" = "#91bfdb"
+  )) +
+  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
+  theme_minimal(base_size = 24) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 0),
+    plot.title = element_text(size = 18, hjust = 0.5)
+  )
+
+p_merged
+ggsave("./plots/improve_AUC_kd.pdf")
+```
+
+AUC is not as good as logistic regression directly. 
+
+The RBP AUC value varies with peak number.
+```{r}
+df %>% mutate(n_peaks = n_clip_bound_out_df + n_clip_unbound_out_df + n_non_determined_out_df, 
+              RBP = word(file_title, 1, 1, sep = "_"), motif = word(file_title, 2, 2, sep = "_"), mark = word(file_title, 1, 2, sep = "_")) %>% 
+    ggplot(., aes(x = n_peaks, y = auc_em)) + geom_point() + labs(x = "Number of peaks", y = "AUC") + theme_classic(base_size = 16) + theme(aspect.ratio = 1)
+
+df %>%
+  mutate(
+    n_peaks = n_clip_bound_out_df + n_clip_unbound_out_df + n_non_determined_out_df,
+    RBP  = word(file_title, 1, sep = "_"),
+    motif = word(file_title, 2, sep = "_"),
+    mark  = word(file_title, 1, 2, sep = "_")
+  ) %>%
+  ggplot(aes(x = n_peaks, y = auc_em, color = RBP, label = mark)) +
+  geom_point(size = 3) +
+  # geom_text(vjust = -0.8, size = 4, show.legend = FALSE) +
+  labs(
+    x = "Number of sites scanned",
+    y = "AUC",
+    color = "RBP"
+  ) +
+  scale_color_brewer(palette = "Paired") + 
+  theme_minimal(base_size = 20) +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "right"
+  )
+
+ggsave("./plots/AUC_scatterplot_of_all_kd.pdf")
+```
+

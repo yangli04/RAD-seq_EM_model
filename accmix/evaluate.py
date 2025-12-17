@@ -24,6 +24,7 @@ def run_evaluation(
     motif_logo: Optional[str] = None,
     score_phastcons100_threshold: float = 1.0,
     motif_range: int = 50,
+    name_add: str = "",
 ) -> None:
     """Run evaluation pipeline.
 
@@ -37,13 +38,14 @@ def run_evaluation(
     - motif_logo: Optional logo to display on heatmaps.
     - score_phastcons100_threshold: Threshold for class labeling logic.
     - motif_range: Window half-size around site position for overlap checks.
+    - name_add: Additional string to append to generated filenames.
     """
 
     output_root = Path(output_root)
 
     output_root.mkdir(parents=True, exist_ok=True)
 
-    file_title = f"{rbp_name}_{motif_id}"
+    file_title = f"{rbp_name}_{motif_id}_{name_add}" if name_add else f"{rbp_name}_{motif_id}"
 
     df = pl.read_parquet(model_parquet)
     missing_cols = [c for c in ("prior_p", "posterior_r", "id", "s_l") if c not in df.columns]

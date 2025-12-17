@@ -218,6 +218,7 @@ rule evaluate_nc:
             -L {params.logo} \
             -t 1.0 \
             -R 50 \
+            -n nc \
         && touch {output}
         """
 
@@ -246,5 +247,6 @@ rule evaluate_kd:
             -L {params.logo} \
             -t 1.0 \
             -R 50 \
+            -n kd \
         && touch {output}
         """

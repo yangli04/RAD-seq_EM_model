@@ -241,6 +241,7 @@ def evaluate_cmd(
     motif_logo: Optional[Path] = typer.Option(None, "-L", "--motif-logo", help="Optional motif logo image."),
     score_phastcons100_threshold: float = typer.Option(1.0, "-t", "--score-phastcons100-threshold", help="Conservation score threshold."),
     motif_range: int = typer.Option(50, "-R", "--motif-range", help="Half-window around site position for overlaps."),
+    name_add: str = typer.Option("", "-n", "--name-add", help="Additional string to append to generated filenames."),
 ) -> None:
     """Run the evaluation pipeline using direct CLI options."""
 
@@ -254,6 +255,7 @@ def evaluate_cmd(
         motif_logo=str(motif_logo) if motif_logo else None,
         score_phastcons100_threshold=score_phastcons100_threshold,
         motif_range=motif_range,
+        name_add=name_add,
     )
 
 

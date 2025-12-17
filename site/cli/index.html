@@ -866,21 +866,27 @@
 </ul>
 <p>Outputs: <code>&lt;prefix&gt;.model.parquet</code> (priors/posteriors) and <code>&lt;prefix&gt;.model.json</code> (parameters).</p>
 <h2 id="accmix-evaluate"><code>accmix evaluate</code><a class="headerlink" href="#accmix-evaluate" title="Permanent link">&para;</a></h2>
-<p>Evaluate fitted models against CLIP/PIP-seq using a JSON config.</p>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>&lt;config.json&gt;
+<p>Evaluate fitted models against CLIP/PIP-seq using the model parquet directly.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-M<span class="w"> </span>&lt;model.parquet&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-b<span class="w"> </span>&lt;CLIP.bed&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-p<span class="w"> </span>&lt;PIPseq.parquet&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-r<span class="w"> </span>&lt;RBP_Name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-m<span class="w"> </span>&lt;Motif_ID&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>results<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">[</span>-L<span class="w"> </span>&lt;logo.png&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>-t<span class="w"> </span><span class="m">1</span>.0<span class="o">]</span><span class="w"> </span><span class="o">[</span>-R<span class="w"> </span><span class="m">50</span><span class="o">]</span>
 </code></pre></div>
-<p>Config keys</p>
+<p>Options</p>
 <ul>
-<li><code>input_data_parquet</code> (required): Annotated input parquet used for modeling.</li>
-<li><code>clipseq_bed</code> (required): CLIP-seq peaks BED.</li>
-<li><code>pipseq_parquet</code> (required): PIP-seq parquet.</li>
-<li><code>rbp_name</code>: RBP label.</li>
-<li><code>motif_id</code>: Motif identifier.</li>
-<li><code>motif_logo</code>: Path to motif logo image (optional, for plots).</li>
-<li><code>output_root</code>: Output directory (default <code>results</code>).</li>
-<li><code>model_json</code> (required): Path to fitted model JSON.</li>
-<li><code>score_phastcons100_threshold</code>: Conservation cutoff (float, default 1.0).</li>
-<li><code>motif_range</code>: Window size around motifs for evaluation (int, default 50).</li>
+<li><code>-M, --model-parquet PATH</code> (required): Parquet produced by <code>accmix model</code> (contains <code>prior_p</code>/<code>posterior_r</code>).</li>
+<li><code>-b, --clipseq-bed PATH</code> (required): CLIP-seq peaks BED.</li>
+<li><code>-p, --pipseq-parquet PATH</code> (required): PIP-seq parquet.</li>
+<li><code>-r, --rbp-name TEXT</code>: RBP label.</li>
+<li><code>-m, --motif-id TEXT</code>: Motif identifier.</li>
+<li><code>-o, --output-root PATH</code>: Output directory (default <code>results</code>).</li>
+<li><code>-L, --motif-logo PATH</code>: Optional motif logo for heatmaps.</li>
+<li><code>-t, --score-phastcons100-threshold FLOAT</code>: Conservation cutoff (default 1.0).</li>
+<li><code>-R, --motif-range INT</code>: Half-window around site for overlaps (default 50).</li>
 </ul>
 <p>Outputs: plots under <code>results/plots/</code>, logs and tables under <code>results/logs/</code>.</p>
 

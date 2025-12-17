@@ -11,3 +11,4 @@ test/*
 data/*
 *__pycache__/*
 results/*
+notebooks/*

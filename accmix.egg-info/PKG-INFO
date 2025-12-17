@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: accmix
-Version: 0.1.2
+Version: 0.2.1
 Summary: RAD-seq EM mixture with logistic prior: scan, annotate, model, diff
 Author: yangli04
 License: Proprietary

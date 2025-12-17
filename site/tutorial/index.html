@@ -854,23 +854,17 @@
 <li><code>results/RBP_Motif.XXXXXX.model.json</code> (fitted parameters)</li>
 </ul>
 <h2 id="5-evaluation">5) Evaluation<a class="headerlink" href="#5-evaluation" title="Permanent link">&para;</a></h2>
-<p>Evaluate the fitted model against external assays (e.g., CLIP/PIPseq) via the <code>evaluate</code> subcommand using a config file.</p>
-<p>Example config (<code>results/ExampleRBP_M00124.evaluate.config.json</code>):</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;input_data_parquet&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;results/M00124_example_annotated.parquet&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;clipseq_bed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;data/clipseq/ELAVL1_HeLa.bed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pipseq_parquet&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;data/evaluation/PIPseq_HeLa.parquet&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;rbp_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ExampleRBP&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;motif_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;M00124&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;motif_logo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;data/logos/M00124_fwd.png&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;output_root&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;results&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;model_json&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;results/RBP_Motif.XXXXXX.model.json&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;score_phastcons100_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;motif_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>Run evaluation:</p>
-<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span>-c<span class="w"> </span>results/ExampleRBP_M00124.evaluate.config.json
+<p>Evaluate the fitted model against external assays (e.g., CLIP/PIPseq) via the <code>evaluate</code> subcommand using the model parquet.</p>
+<div class="highlight"><pre><span></span><code>accmix<span class="w"> </span>evaluate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-M<span class="w"> </span>results/RBP_Motif.XXXXXX.model.parquet<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-b<span class="w"> </span>data/clipseq/ELAVL1_HeLa.bed<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span>data/evaluation/PIPseq_HeLa.parquet<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-r<span class="w"> </span>ExampleRBP<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-m<span class="w"> </span>M00124<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-o<span class="w"> </span>results<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-L<span class="w"> </span>data/logos/M00124_fwd.png<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-t<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-R<span class="w"> </span><span class="m">50</span>
 </code></pre></div>
 <p>This writes plots/tables under <code>results/</code> for downstream analysis.</p>
 
