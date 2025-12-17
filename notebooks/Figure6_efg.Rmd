@@ -1,0 +1,208 @@
+---
+title: "Figure6, e, f, g panels. Summary of model performance"
+output: html_document
+date: "2025-12-05"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("/home/yangli/workspace/stats_for_RADseq/stats-for-accessibility/notebooks")
+library(tidyverse)
+library(patchwork)
+library(ggpubr)
+library(tidyverse)
+library(rstatix)
+```
+
+
+```{r}
+files <- list.files("../results/logs/", pattern = "metadata.tsv", full.names = TRUE)
+df <- rbindlist(lapply(files, fread), use.names = TRUE, fill = TRUE)
+```
+
+
+```{r}
+plot_auc = df %>% pivot_longer(cols = c(auc_control, auc_em, auc_lr, auc_lr_sl),
+                    names_to = "model", 
+                    values_to = "AUC") %>%
+      mutate(model = recode(model,
+                            "auc_control" = "PWM model",
+                            "auc_em" = "EM model",
+                            "auc_lr" = "Logistic regression",
+                            "auc_lr_sl" = "Logistic regresion with acc info",
+                            )) %>%
+      mutate(model = factor(model, levels = c("PWM model", "EM model", "Logistic regression","Logistic regresion with acc info")))
+
+p_all <- plot_auc %>%
+  mutate(model = recode(model,
+                        "EM model" = "EM",
+                        "PWM model" = "PWM",
+                        "Logistic regression" = "LR",
+                        "Logistic regresion with acc info" = "LR with sl")) %>%
+  ggplot(aes(x = model, y = AUC, fill = model)) +
+  geom_boxplot(outlier.shape = NA, width = 0.6, color = "black") +
+  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white", color = "black") +
+  scale_fill_manual(values = c("EM" = "#b2182b",
+                               "LR with sl" = "#91bfdb",
+                               "LR" = "#2166ac")) +
+  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
+  theme_minimal(base_size = 24) +
+  theme(
+    legend.position = "none",             # hide legend
+    axis.text.x = element_text(angle = 0),
+    plot.title = element_text(size = 18,  hjust = 0.5)
+  )
+p_all
+p_PWM_EM <- plot_auc %>%
+  mutate(model = recode(model,
+                        "EM model" = "EM (RAD-seq)",
+                        "PWM model" = "PWM (control)",
+                        "Logistic regression" = "LR",
+                        "Logistic regresion with acc info" = "LR with sl")) %>%
+  filter(model %in% c("EM (RAD-seq)", "PWM (control)")) %>% 
+  ggplot(aes(x = model, y = AUC, fill = model)) +
+  geom_boxplot(outlier.shape = NA, width = 0.3, color = "black") +
+  
+  geom_line(aes(group = file_title), color = "gray60", alpha = 0.8, linewidth = 0.1) + 
+  
+  geom_jitter(width = 0.12, alpha = 0.6, size = 1.8, stroke = 0, show.legend = FALSE) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white", color = "black") +
+  scale_fill_manual(values = c("EM (RAD-seq)" = "#b2182b",
+                               "LR with sl" = "#91bfdb",
+                               "LR" = "#2166ac")) +
+  labs(x = NULL, y = "AUC", title = "Supervised LR vs. unsupervised EM model") +
+  theme_minimal(base_size = 24) +
+  theme(
+    legend.position = "none",             # hide legend
+    axis.text.x = element_text(angle = 0),
+    plot.title = element_text(size = 18,  hjust = 0.5)
+  )
+p_PWM_EM
+ggsave("../../final_figures/Fig6f_EM_PWM_model_comparison.pdf", width = 5, height = 5)
+```
+
+
+AUC is not as good as logistic regression directly. 
+
+The RBP AUC value varies with peak number.
+```{r}
+df %>% mutate(n_peaks = n_clip_bound_out_df + n_clip_unbound_out_df + n_non_determined_out_df, 
+              RBP = word(file_title, 1, 1, sep = "_"), motif = word(file_title, 2, 2, sep = "_"), mark = word(file_title, 1, 2, sep = "_")) %>% 
+    ggplot(., aes(x = n_peaks, y = auc_em)) + geom_point() + labs(x = "Number of peaks", y = "AUC") + theme_classic(base_size = 16) + theme(aspect.ratio = 1)
+
+df %>%
+  mutate(
+    n_peaks = n_clip_bound_out_df + n_clip_unbound_out_df + n_non_determined_out_df,
+    RBP  = word(file_title, 1, sep = "_"),
+    motif = word(file_title, 2, sep = "_"),
+    mark  = word(file_title, 1, 2, sep = "_")
+  ) %>%
+  ggplot(aes(x = n_peaks, y = auc_em, color = RBP, label = mark)) +
+  geom_point(size = 3) +
+  # geom_text(vjust = -0.8, size = 4, show.legend = FALSE) +
+  labs(
+    x = "Number of sites scanned",
+    y = "AUC",
+    color = "RBP"
+  ) +
+  scale_color_brewer(palette = "Paired") + 
+  theme_minimal(base_size = 20) +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "right"
+  )
+
+ggsave("../../final_figures/Fig6e_AUC_scatterplot_of_all.pdf")
+```
+
+Take a look at the beta values and see how each feature contribute to the final result. 
+Seems like TSS_Proximity and phastcons100 percent takes too much weight. Comparing to LR, the score_phastcons100 is the most import. If look at the raw beta value, we found the TSS_proximity is the most important (too much important.).
+```{r}
+coef_dir   <- "../logs/"        # folder holding <sample>_beta_coefficients.tsv
+out_prefix <- "./routput/r_output"  # prefix for saved plots
+
+# --- 1) Read all coefficient files ---
+coef_files <- list.files(coef_dir, pattern = "_beta_coefficients\\.tsv$", full.names = TRUE)
+read_coef <- function(f) {
+  read_tsv(f, show_col_types = FALSE) %>%
+    mutate(sample = str_remove(basename(f), "_beta_coefficients\\.tsv$")) %>% 
+    mutate(sample = str_remove(basename(f), "_beta_coefficients_s_l\\.tsv$"))
+}
+coef_all <- map_dfr(coef_files, read_coef) %>%
+  pivot_longer(c(beta_em, beta_lr), names_to = "model", values_to = "beta") %>%
+  mutate(model = recode(model, beta_em = "EM", beta_lr = "LR")) %>%
+  filter(feature != "intercept")
+
+coef_files <- list.files(coef_dir, pattern = "_beta_coefficients_s_l\\.tsv$", full.names = TRUE)
+coef_s_l <- map_dfr(coef_files, read_coef) %>%
+  pivot_longer(c(beta_lr_s_l), names_to = "model", values_to = "beta") %>%
+  mutate(model = recode(model, beta_lr_s_l = "LR_with_sl")) %>%
+  filter(feature != "intercept")
+
+coef_all <- rbind(coef_all, coef_s_l) %>% mutate(sample = gsub("_beta_coefficients.tsv", "", sample))
+
+
+summary_raw <- coef_all %>%
+  group_by(model, feature) %>%
+  summarise(
+    n    = n(),
+    mean = mean(beta, na.rm = TRUE),
+    sd   = sd(beta, na.rm = TRUE),
+    sem  = sd / sqrt(n),
+    .groups = "drop"
+  )
+
+# Order features by |mean| within each model for readability
+feature_order_raw <- summary_raw %>%
+  arrange(model, desc(abs(mean))) %>%
+  pull(feature) %>%
+  unique()
+
+z_tbl <- coef_all %>%
+  group_by(model, feature) %>%
+  mutate(mu = mean(beta, na.rm = TRUE),
+         s  = sd(beta, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(beta_z = ifelse(is.finite(s) & s > 0, (beta - mu) / s, 0)) %>%
+  select(sample, model, feature, beta_z)
+
+# --- 4) Within-sample L2-normalized weights (relative importance in each sample) ---
+# For each (sample, model), divide all feature betas by the L2 norm across features
+l2_tbl <- coef_all %>%
+  group_by(sample, model) %>%
+  mutate(l2 = sqrt(sum(beta^2, na.rm = TRUE))) %>%
+  ungroup() %>%
+  mutate(beta_l2 = ifelse(is.finite(l2) & l2 > 0, beta / l2, 0)) %>%
+  select(sample, model, feature, beta_l2)
+
+l2_tbl <- l2_tbl %>% 
+      mutate(feature_recode = recode(feature, 
+                                   "TSS_proximity" = "TSS proximity", 
+                                   "s_l" = "RAD-seq signal",
+                                   "score_phylop100" = "Phylop100way score", 
+                                   "score_phastcons100" = "PhastConsway score", 
+                                   "PhastCons100_percent" = "PhastCons100way region score",
+                                   "outer_mean_logPWM" = "logPWM(outer region)",
+                                   "inner_mean_logPWM" = "logPWM(inner region)",
+                                   "GC_outer_pct" = "GC content(outer region)",
+                                   "GC_inner_pct" = "GC content(inner region)",
+                                   ), model = recode(model, "LR_with_sl" = "LR with RAD-seq", "EM" = "EM (RAD-seq)"))
+
+
+p_box_l2 <- ggplot(l2_tbl, aes(x = feature_recode, y = beta_l2, fill = model)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  coord_flip() +
+  labs(x = NULL, y = "β / ||β||₂",
+       title = "Contribution of parameters") +
+  theme_minimal(base_size = 10)
+
+p_box_l2
+
+ggsave("../../final_figures/Fig6g_beta_relative_distributioin.pdf", plot = p_box_l2, device = cairo_pdf, width = 6, height = 4)
+```

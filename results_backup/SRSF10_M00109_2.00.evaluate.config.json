@@ -1,0 +1,12 @@
+{
+  "input_data_parquet": "/home/yangli/workspace/stats_for_RADseq/stats-for-accessibility/data/midway3_results/M00109_2.00_wtTSS_and_PhaseCons.parquet",
+  "clipseq_bed": "/home/yangli/train/add_rbp_clip/raw_data/SRSF10_HeLa.bed",
+  "pipseq_parquet": "/home/yangli/workspace/stats_for_RADseq/stats-for-accessibility/data/evaluation/PIPseq_HeLa.parquet",
+  "rbp_name": "SRSF10",
+  "motif_id": "M00109_2.00",
+  "motif_logo": "/home/yangli/workspace/accessibility/CISBP_RNA/logos_all_motifs/M00109_2.00_fwd.png",
+  "output_root": "/home/yangli/workspace/stats_for_RADseq/stats-for-accessibility/results",
+  "model_json": "/home/yangli/workspace/stats_for_RADseq/stats-for-accessibility/results/SRSF10_M00109_2.00.model.json",
+  "score_phastcons100_threshold": 1.0,
+  "motif_range": 50
+}

@@ -58,10 +58,19 @@ accmix model \
 
 5) Evaluate
 
-Prepare a config JSON (see [CLI](cli.md#accmix-evaluate)) and run:
+Run evaluation directly on the model parquet:
 
 ```bash
-accmix evaluate -c results/ExampleRBP_M00124.evaluate.config.json
+accmix evaluate \
+  -M results/RBP_Motif.XXXXXX.model.parquet \
+  -b data/clipseq/ELAVL1_HeLa.bed \
+  -p data/evaluation/PIPseq_HeLa.parquet \
+  -r ExampleRBP \
+  -m M00124 \
+  -o results \
+  -L data/logos/M00124_fwd.png \
+  -t 1.0 \
+  -R 50
 ```
 
 Outputs include evaluation plots and tables. Example artifacts from this repo:
@@ -90,9 +99,8 @@ python scripts/run_accmix_models_over_midway3_results.py
 python scripts/run_accmix_evaluation_over_midway3_results.py
 ```
 
-- For each RBP/motif pair, finds the latest `results/<RBP>_<Motif>*.model.json`.
-- Writes a per-run evaluation config under `results/`.
-- Invokes `accmix evaluate -c <config>` for each pair.
+- For each RBP/motif pair, finds the latest `results/<RBP>_<Motif>*.model.parquet`.
+- Invokes `accmix evaluate -M <model.parquet> -b <CLIP.bed> -p <pipseq.parquet> -r <RBP> -m <Motif>`.
 - Plots and logs are written under `results/plots/` and `results/logs/`.
 
 Running these two scripts sequentially reproduces the model fits and evaluation plots shown in the repository.

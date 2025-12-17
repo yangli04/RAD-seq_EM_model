@@ -90,23 +90,29 @@ Outputs: `<prefix>.model.parquet` (priors/posteriors) and `<prefix>.model.json` 
 
 ## `accmix evaluate`
 
-Evaluate fitted models against CLIP/PIP-seq using a JSON config.
+Evaluate fitted models against CLIP/PIP-seq using the model parquet directly.
 
 ```bash
-accmix evaluate -c <config.json>
+accmix evaluate \
+	-M <model.parquet> \
+	-b <CLIP.bed> \
+	-p <PIPseq.parquet> \
+	-r <RBP_Name> \
+	-m <Motif_ID> \
+	-o results \
+	[-L <logo.png>] [-t 1.0] [-R 50]
 ```
 
-Config keys
+Options
 
-- `input_data_parquet` (required): Annotated input parquet used for modeling.
-- `clipseq_bed` (required): CLIP-seq peaks BED.
-- `pipseq_parquet` (required): PIP-seq parquet.
-- `rbp_name`: RBP label.
-- `motif_id`: Motif identifier.
-- `motif_logo`: Path to motif logo image (optional, for plots).
-- `output_root`: Output directory (default `results`).
-- `model_json` (required): Path to fitted model JSON.
-- `score_phastcons100_threshold`: Conservation cutoff (float, default 1.0).
-- `motif_range`: Window size around motifs for evaluation (int, default 50).
+- `-M, --model-parquet PATH` (required): Parquet produced by `accmix model` (contains `prior_p`/`posterior_r`).
+- `-b, --clipseq-bed PATH` (required): CLIP-seq peaks BED.
+- `-p, --pipseq-parquet PATH` (required): PIP-seq parquet.
+- `-r, --rbp-name TEXT`: RBP label.
+- `-m, --motif-id TEXT`: Motif identifier.
+- `-o, --output-root PATH`: Output directory (default `results`).
+- `-L, --motif-logo PATH`: Optional motif logo for heatmaps.
+- `-t, --score-phastcons100-threshold FLOAT`: Conservation cutoff (default 1.0).
+- `-R, --motif-range INT`: Half-window around site for overlaps (default 50).
 
 Outputs: plots under `results/plots/`, logs and tables under `results/logs/`.

@@ -74,29 +74,19 @@ Outputs:
 
 ## 5) Evaluation
 
-Evaluate the fitted model against external assays (e.g., CLIP/PIPseq) via the `evaluate` subcommand using a config file.
-
-Example config (`results/ExampleRBP_M00124.evaluate.config.json`):
-
-```json
-{
-  "input_data_parquet": "results/M00124_example_annotated.parquet",
-  "clipseq_bed": "data/clipseq/ELAVL1_HeLa.bed",
-  "pipseq_parquet": "data/evaluation/PIPseq_HeLa.parquet",
-  "rbp_name": "ExampleRBP",
-  "motif_id": "M00124",
-  "motif_logo": "data/logos/M00124_fwd.png",
-  "output_root": "results",
-  "model_json": "results/RBP_Motif.XXXXXX.model.json",
-  "score_phastcons100_threshold": 1.0,
-  "motif_range": 50
-}
-```
-
-Run evaluation:
+Evaluate the fitted model against external assays (e.g., CLIP/PIPseq) via the `evaluate` subcommand using the model parquet.
 
 ```bash
-accmix evaluate -c results/ExampleRBP_M00124.evaluate.config.json
+accmix evaluate \
+  -M results/RBP_Motif.XXXXXX.model.parquet \
+  -b data/clipseq/ELAVL1_HeLa.bed \
+  -p data/evaluation/PIPseq_HeLa.parquet \
+  -r ExampleRBP \
+  -m M00124 \
+  -o results \
+  -L data/logos/M00124_fwd.png \
+  -t 1.0 \
+  -R 50
 ```
 
 This writes plots/tables under `results/` for downstream analysis.
