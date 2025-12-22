@@ -1,4 +1,10 @@
-"""Memory-optimized annotate variant that keeps wide tables inside Polars."""
+"""Memory-optimized annotate variant with BigWig support, keeping the original annotate.py intact.
+
+This module provides:
+- compute_sl(): supports BED6 mode, BigWig pair mode (plus,minus for native/fixed),
+  and single BigWig per condition (strand-agnostic)
+- annotate_tss(): memory-bounded per-chromosome processing with optional BigWig fast path
+"""
 
 from __future__ import annotations
 import argparse
@@ -7,117 +13,319 @@ import os
 import polars as pl
 import pyranges as pr
 import math
-import tempfile
-import shutil
 from pathlib import Path
 
-def compute_sl(ASnative: str, ASfixed: str, toptable: str, out_parquet: str,
-               M: int = 50, N: int = 500, threshold: int = 8) -> None:
-    AS_fixed = pl.read_csv(ASfixed, has_header=False,
-                           new_columns=["Chromosome", "Start", "Strand", "AS_fixed", 'depth_fixed', "motif"],
-                           separator="\t")\
-                   .select(["Chromosome", "Start", "Strand", "AS_fixed", 'depth_fixed'])\
-                   .with_columns((pl.col("Start") + 1).alias("End"))
-    AS_native = pl.read_csv(ASnative, has_header=False,
-                            new_columns=["Chromosome", "Start", "Strand", "AS_native", 'depth_native', "motif"],
-                            separator="\t")\
-                    .select(["Chromosome", "Start", "Strand", "AS_native", 'depth_native'])\
-                    .with_columns((pl.col("Start") + 1).alias("End"))
-    AS_fixed_pr = pr.PyRanges(AS_fixed.to_pandas())
-    AS_native_pr = pr.PyRanges(AS_native.to_pandas())
-    dftop = pl.read_csv(toptable, separator="\t")\
-                .with_columns((pl.col("inner_mean_logPWM") - pl.col("outer_mean_logPWM")).alias("diff_logPWM"))\
-                .sort(['chrom', 'pos1', 'strand'])\
-                .with_columns(pl.concat_str(['chrom', 'pos1', 'strand'], separator="_").alias("id"))
 
-    dftop_inner = dftop.with_columns((pl.col("pos1") - pl.lit(M)).alias("Start"), (pl.col("pos1") + pl.lit(M)).alias("End"))\
-                       .rename({"chrom": "Chromosome", "strand": "Strand"})
-    dftop_outer = dftop.with_columns((pl.col("pos1") - pl.lit(N)).alias("Start"), (pl.col("pos1") + pl.lit(N)).alias("End"))\
-                       .rename({"chrom": "Chromosome", "strand": "Strand"})
-    dftop_inner_pr = pr.PyRanges(dftop_inner.to_pandas())
-    dftop_outer_pr = pr.PyRanges(dftop_outer.to_pandas())
+def compute_sl(
+    ASnative: str,
+    ASfixed: str,
+    toptable: str,
+    out_parquet: str,
+    M: int = 50,
+    N: int = 500,
+    threshold: int = 8,
+) -> None:
+    """Compute s_l using either BED6 inputs or BigWig files for native/fixed.
 
-    dftop_inner_fixed_pr = dftop_inner_pr.join_overlaps(AS_fixed_pr, strand_behavior="same", join_type = "inner")
-    dftop_outer_fixed_pr = dftop_outer_pr.join_overlaps(AS_fixed_pr, strand_behavior="same", join_type = "inner")
-    dftop_inner_native_pr = dftop_inner_pr.join_overlaps(AS_native_pr, strand_behavior="same", join_type = "inner")
-    dftop_outer_native_pr = dftop_outer_pr.join_overlaps(AS_native_pr, strand_behavior="same", join_type = "inner")
+    BigWig options:
+    - Pair mode (strand-specific):
+        ASnative="/path/native_plus.bw,/path/native_minus.bw"
+        ASfixed="/path/fixed_plus.bw,/path/fixed_minus.bw"
+      Uses the row strand to select plus vs minus BigWig.
+    - Single mode (strand-agnostic):
+        ASnative="/path/native.bw"
+        ASfixed="/path/fixed.bw"
+      Ignores strand and always samples from the given BigWig.
 
+    In BigWig modes, s_l is computed via per-site inner/outer means and variances.
+        Memory is bounded by iterating per chromosome.
+    """
 
-    dftop_inner_fixed_df = pl.from_pandas(dftop_inner_fixed_pr)
-    dftop_inner_native_df = pl.from_pandas(dftop_inner_native_pr)
+    dftop = (
+        pl.read_csv(toptable, separator="\t")
+        .with_columns((pl.col("inner_mean_logPWM") - pl.col("outer_mean_logPWM")).alias("diff_logPWM"))
+        .sort(["chrom", "pos1", "strand"])  # ensure per-chrom streaming order
+        .with_columns(pl.concat_str(["chrom", "pos1", "strand"], separator="_").alias("id"))
+    )
 
-    def filter_outer(df: pl.DataFrame) -> pl.DataFrame:
-        flank = max(N - M, 0)
-        mask1 = (df["Start_b"] >= df["Start"]) & (df["Start_b"] <= df["Start"] + flank)
-        mask2 = (df["Start_b"] >= df["End"] - flank) & (df["Start_b"] <= df["End"])  
-        return df.filter(mask1 | mask2)
+    # Detect BigWig mode(s)
+    def _is_bw(s: str) -> bool:
+        s = s or ""
+        return s.endswith(".bw") or s.endswith(".bigwig") or "," in s
 
-    dftop_outer_fixed_df = filter_outer(pl.from_pandas(dftop_outer_fixed_pr))
-    dftop_outer_native_df = filter_outer(pl.from_pandas(dftop_outer_native_pr))
+    if _is_bw(ASnative) and _is_bw(ASfixed):
+        # Normalize inputs into lists
+        nat_parts = [p for p in ASnative.split(",") if p]
+        fix_parts = [p for p in ASfixed.split(",") if p]
 
-    def summarize_weighted_by_id(
-        df: pl.DataFrame,
-        value_col: str,
-        weight_col: str,
-        *,
-        id_col: str = "id",
-        threshold: int = threshold,
-        ddof: int = 0,
-    ) -> pl.DataFrame:
-        val = pl.col(value_col)
-        w = pl.col(weight_col)
-        w_mean_name = f"{value_col}_w_mean"
-        res = (
-            df
-            .group_by(id_col)
-            .agg([
-                pl.len().alias("n"),
-                val.mean().alias(f"{value_col}_mean"),
-                val.var(ddof=ddof).alias(f"{value_col}_var"),
-                (val * w).sum().alias("_wx"),
-                w.sum().alias("_w"),
-                (w * val.pow(2)).sum().alias("_wx2"),
-                pl.first("inner_mean_logPWM"),
-                pl.first("outer_mean_logPWM"),
-                pl.first("GC_inner_pct"),
-                pl.first("GC_outer_pct"),
-                pl.first("kmer_count_inner"),
-                pl.first("kmer_count_outer"),
-                pl.first("diff_logPWM"),
-            ])
-            .filter(pl.col("n") >= threshold)
-            .with_columns([
-                (pl.col("_wx") / pl.col("_w")).alias(w_mean_name),
-            ])
-            .with_columns(
-                (pl.col("_wx2") / pl.col("_w") - pl.col(w_mean_name).pow(2)).alias(f"{value_col}_w_var"),
-            )
-            .drop(['_wx', '_wx2'])
+        try:
+            import pyBigWig  # type: ignore
+            import numpy as np
+        except Exception as e:
+            raise SystemExit(f"pyBigWig is required for BigWig mode: {e}")
+
+        results_rows = []
+
+        def _vals(bw, chrom, st, en):
+            try:
+                arr = bw.values(chrom, int(st), int(en), numpy=True)
+                if arr is None:
+                    return np.array([], dtype=float)
+                return arr[np.isfinite(arr)].astype(float)
+            except Exception:
+                return np.array([], dtype=float)
+
+        def _t_stat(inner: "np.ndarray", outer: "np.ndarray") -> float:
+            n1 = inner.size
+            n2 = outer.size
+            if n1 < threshold or n2 < threshold:
+                return float("nan")
+            m1 = float(inner.mean())
+            m2 = float(outer.mean())
+            v1 = float(inner.var(ddof=0))
+            v2 = float(outer.var(ddof=0))
+            denom = v1 / max(n1, 1) + v2 / max(n2, 1)
+            return (m1 - m2) / denom if denom > 0 else float("nan")
+
+        if len(nat_parts) == 2 and len(fix_parts) == 2:
+            # Strand-specific pair mode
+            nat_plus, nat_minus = nat_parts
+            fix_plus, fix_minus = fix_parts
+            bw_nat_plus = pyBigWig.open(nat_plus)
+            bw_nat_minus = pyBigWig.open(nat_minus)
+            bw_fix_plus = pyBigWig.open(fix_plus)
+            bw_fix_minus = pyBigWig.open(fix_minus)
+
+            for chrom in dftop["chrom"].unique().to_list():
+                sites = dftop.filter(pl.col("chrom") == chrom)
+                if sites.height == 0:
+                    continue
+                for row in sites.iter_rows(named=True):
+                    pos = int(row["pos1"])
+                    strand = row["strand"]
+                    start_inner = max(0, pos - M); end_inner = pos + M
+                    start_left = max(0, pos - N); end_left = max(0, pos - M)
+                    start_right = pos + M; end_right = pos + N
+                    nat_bw = bw_nat_plus if strand == "+" else bw_nat_minus
+                    fix_bw = bw_fix_plus if strand == "+" else bw_fix_minus
+                    nat_inner = _vals(nat_bw, chrom, start_inner, end_inner)
+                    nat_outer = np.concatenate([
+                        _vals(nat_bw, chrom, start_left, end_left),
+                        _vals(nat_bw, chrom, start_right, end_right),
+                    ])
+                    fix_inner = _vals(fix_bw, chrom, start_inner, end_inner)
+                    fix_outer = np.concatenate([
+                        _vals(fix_bw, chrom, start_left, end_left),
+                        _vals(fix_bw, chrom, start_right, end_right),
+                    ])
+                    t_native = _t_stat(nat_inner, nat_outer)
+                    t_fixed = _t_stat(fix_inner, fix_outer)
+                    s_l = ((0.0 if math.isnan(t_native) else t_native ** 2)
+                           + (0.0 if math.isnan(t_fixed) else t_fixed ** 2))
+                    results_rows.append({"id": row["id"], "t_native": t_native, "t_fixed": t_fixed, "s_l": s_l})
+
+            try:
+                bw_nat_plus.close(); bw_nat_minus.close(); bw_fix_plus.close(); bw_fix_minus.close()
+            except Exception:
+                pass
+
+        elif len(nat_parts) == 1 and len(fix_parts) == 1:
+            # Single BigWig per condition (strand-agnostic)
+            bw_nat = pyBigWig.open(nat_parts[0])
+            bw_fix = pyBigWig.open(fix_parts[0])
+
+            for chrom in dftop["chrom"].unique().to_list():
+                sites = dftop.filter(pl.col("chrom") == chrom)
+                if sites.height == 0:
+                    continue
+                for row in sites.iter_rows(named=True):
+                    pos = int(row["pos1"])
+                    start_inner = max(0, pos - M); end_inner = pos + M
+                    start_left = max(0, pos - N); end_left = max(0, pos - M)
+                    start_right = pos + M; end_right = pos + N
+                    nat_inner = _vals(bw_nat, chrom, start_inner, end_inner)
+                    nat_outer = np.concatenate([
+                        _vals(bw_nat, chrom, start_left, end_left),
+                        _vals(bw_nat, chrom, start_right, end_right),
+                    ])
+                    fix_inner = _vals(bw_fix, chrom, start_inner, end_inner)
+                    fix_outer = np.concatenate([
+                        _vals(bw_fix, chrom, start_left, end_left),
+                        _vals(bw_fix, chrom, start_right, end_right),
+                    ])
+                    t_native = _t_stat(nat_inner, nat_outer)
+                    t_fixed = _t_stat(fix_inner, fix_outer)
+                    s_l = ((0.0 if math.isnan(t_native) else t_native ** 2)
+                           + (0.0 if math.isnan(t_fixed) else t_fixed ** 2))
+                    results_rows.append({"id": row["id"], "t_native": t_native, "t_fixed": t_fixed, "s_l": s_l})
+
+            try:
+                bw_nat.close(); bw_fix.close()
+            except Exception:
+                pass
+
+        else:
+            raise SystemExit("BigWig mode must be either pair (plus,minus for both) or single (one file per condition).")
+
+        results_df = pl.DataFrame(results_rows)
+        pwm_columns = [
+            "inner_mean_logPWM", "outer_mean_logPWM",
+            "GC_inner_pct", "GC_outer_pct",
+            "kmer_count_inner", "kmer_count_outer",
+            "diff_logPWM",
+        ]
+        results_df = results_df.join(dftop.select(["id"] + pwm_columns), on="id", how="left")
+
+    else:
+        # BED6 mode (memory-bounded): process per chromosome using lazy CSV scans
+        dftop_inner = (
+            dftop.with_columns((pl.col("pos1") - pl.lit(M)).alias("Start"), (pl.col("pos1") + pl.lit(M)).alias("End"))
+            .rename({"chrom": "Chromosome", "strand": "Strand"})
         )
-        return res
+        dftop_outer = (
+            dftop.with_columns((pl.col("pos1") - pl.lit(N)).alias("Start"), (pl.col("pos1") + pl.lit(N)).alias("End"))
+            .rename({"chrom": "Chromosome", "strand": "Strand"})
+        )
 
-    dftop_outer_fixed_sum = summarize_weighted_by_id(dftop_outer_fixed_df, value_col="AS_fixed", weight_col="depth_fixed")
-    dftop_outer_native_sum = summarize_weighted_by_id(dftop_outer_native_df, value_col="AS_native", weight_col="depth_native")
-    dftop_inner_fixed_sum = summarize_weighted_by_id(dftop_inner_fixed_df, value_col="AS_fixed", weight_col="depth_fixed")
-    dftop_inner_native_sum = summarize_weighted_by_id(dftop_inner_native_df, value_col="AS_native", weight_col="depth_native")
+        # Lazy scan of AS files to slice by chromosome
+        ASfixed_scan = pl.scan_csv(
+            ASfixed,
+            has_header=False,
+            separator="\t",
+            new_columns=["Chromosome", "Start", "Strand", "AS_fixed", "depth_fixed", "motif"],
+        ).select(["Chromosome", "Start", "Strand", "AS_fixed", "depth_fixed"])  # drop unused
 
-    pwm_columns = ['inner_mean_logPWM', 'outer_mean_logPWM', 'GC_inner_pct', 'GC_outer_pct', 'kmer_count_inner', 'kmer_count_outer', 'diff_logPWM']
+        ASnative_scan = pl.scan_csv(
+            ASnative,
+            has_header=False,
+            separator="\t",
+            new_columns=["Chromosome", "Start", "Strand", "AS_native", "depth_native", "motif"],
+        ).select(["Chromosome", "Start", "Strand", "AS_native", "depth_native"])  # drop unused
 
-    fixed_part = dftop_outer_fixed_sum.join(dftop_inner_fixed_sum, on="id", how="inner", suffix="_inner")\
-                           .drop([i+"_inner" for i in pwm_columns])\
-                           .with_columns(
-                               ((pl.col("AS_fixed_mean_inner") - pl.col("AS_fixed_mean")) /
-                                (pl.col("AS_fixed_var_inner")/pl.col("_w_inner") + pl.col("AS_fixed_var")/pl.col("_w"))).alias("t_fixed")
-                           )
-    native_part = dftop_outer_native_sum.join(dftop_inner_native_sum, on="id", how="inner", suffix="_inner")\
-                           .drop([i+"_inner" for i in pwm_columns])\
-                           .with_columns(
-                               ((pl.col("AS_native_mean_inner") - pl.col("AS_native_mean")) /
-                                (pl.col("AS_native_var_inner")/pl.col("_w_inner") + pl.col("AS_native_var")/pl.col("_w"))).alias("t_native")
-                           )
+        results_parts: list[pl.DataFrame] = []
 
-    results_df = fixed_part.join(native_part, on="id", suffix="_native")\
-                            .with_columns((pl.col("t_native").pow(2) + pl.col("t_fixed").pow(2)).alias("s_l"))
+        def summarize_weighted_by_id(
+            df: pl.DataFrame,
+            value_col: str,
+            weight_col: str,
+            *,
+            id_col: str = "id",
+            threshold: int = threshold,
+            ddof: int = 0,
+        ) -> pl.DataFrame:
+            val = pl.col(value_col)
+            w = pl.col(weight_col)
+            w_mean_name = f"{value_col}_w_mean"
+            res = (
+                df
+                .group_by(id_col)
+                .agg([
+                    pl.len().alias("n"),
+                    val.mean().alias(f"{value_col}_mean"),
+                    val.var(ddof=ddof).alias(f"{value_col}_var"),
+                    (val * w).sum().alias("_wx"),
+                    w.sum().alias("_w"),
+                    (w * val.pow(2)).sum().alias("_wx2"),
+                    pl.first("inner_mean_logPWM"),
+                    pl.first("outer_mean_logPWM"),
+                    pl.first("GC_inner_pct"),
+                    pl.first("GC_outer_pct"),
+                    pl.first("kmer_count_inner"),
+                    pl.first("kmer_count_outer"),
+                    pl.first("diff_logPWM"),
+                ])
+                .filter(pl.col("n") >= threshold)
+                .with_columns([
+                    (pl.col("_wx") / pl.col("_w")).alias(w_mean_name),
+                ])
+                .with_columns(
+                    (pl.col("_wx2") / pl.col("_w") - pl.col(w_mean_name).pow(2)).alias(f"{value_col}_w_var"),
+                )
+                .drop(["_wx", "_wx2"])
+            )
+            return res
+
+        def filter_outer(df: pl.DataFrame) -> pl.DataFrame:
+            flank = max(N - M, 0)
+            mask1 = (df["Start_b"] >= df["Start"]) & (df["Start_b"] <= df["Start"] + flank)
+            mask2 = (df["Start_b"] >= df["End"] - flank) & (df["Start_b"] <= df["End"])  
+            return df.filter(mask1 | mask2)
+
+        for chrom in dftop["chrom"].unique().to_list():
+            # Slice toptable windows for this chromosome
+            inner_ch = dftop_inner.filter(pl.col("Chromosome") == chrom)
+            outer_ch = dftop_outer.filter(pl.col("Chromosome") == chrom)
+            if inner_ch.height == 0 and outer_ch.height == 0:
+                continue
+
+            # Collect AS for this chromosome lazily
+            AS_fixed_ch = (
+                ASfixed_scan.filter(pl.col("Chromosome") == chrom)
+                .with_columns((pl.col("Start") + 1).alias("End"))
+                .collect(streaming=True)
+            )
+            AS_native_ch = (
+                ASnative_scan.filter(pl.col("Chromosome") == chrom)
+                .with_columns((pl.col("Start") + 1).alias("End"))
+                .collect(streaming=True)
+            )
+            if AS_fixed_ch.height == 0 or AS_native_ch.height == 0:
+                continue
+
+            # Build PyRanges for overlaps (chrom-local)
+            inner_pr = pr.PyRanges(inner_ch.to_pandas())
+            outer_pr = pr.PyRanges(outer_ch.to_pandas())
+            fixed_pr = pr.PyRanges(AS_fixed_ch.to_pandas())
+            native_pr = pr.PyRanges(AS_native_ch.to_pandas())
+
+            inner_fixed_pr = inner_pr.join_overlaps(fixed_pr, strand_behavior="same", join_type="inner")
+            outer_fixed_pr = outer_pr.join_overlaps(fixed_pr, strand_behavior="same", join_type="inner")
+            inner_native_pr = inner_pr.join_overlaps(native_pr, strand_behavior="same", join_type="inner")
+            outer_native_pr = outer_pr.join_overlaps(native_pr, strand_behavior="same", join_type="inner")
+
+            inner_fixed_df = pl.from_pandas(inner_fixed_pr)
+            inner_native_df = pl.from_pandas(inner_native_pr)
+            outer_fixed_df = filter_outer(pl.from_pandas(outer_fixed_pr))
+            outer_native_df = filter_outer(pl.from_pandas(outer_native_pr))
+
+            # Summaries per id
+            outer_fixed_sum = summarize_weighted_by_id(outer_fixed_df, value_col="AS_fixed", weight_col="depth_fixed")
+            outer_native_sum = summarize_weighted_by_id(outer_native_df, value_col="AS_native", weight_col="depth_native")
+            inner_fixed_sum = summarize_weighted_by_id(inner_fixed_df, value_col="AS_fixed", weight_col="depth_fixed")
+            inner_native_sum = summarize_weighted_by_id(inner_native_df, value_col="AS_native", weight_col="depth_native")
+
+            pwm_columns = ['inner_mean_logPWM', 'outer_mean_logPWM', 'GC_inner_pct', 'GC_outer_pct', 'kmer_count_inner', 'kmer_count_outer', 'diff_logPWM']
+
+            fixed_part = (
+                outer_fixed_sum.join(inner_fixed_sum, on="id", how="inner", suffix="_inner")
+                .drop([i+"_inner" for i in pwm_columns])
+                .with_columns(
+                    (
+                        (pl.col("AS_fixed_mean_inner") - pl.col("AS_fixed_mean")) /
+                        (pl.col("AS_fixed_var_inner")/pl.col("_w_inner") + pl.col("AS_fixed_var")/pl.col("_w"))
+                    ).alias("t_fixed")
+                )
+            )
+            native_part = (
+                outer_native_sum.join(inner_native_sum, on="id", how="inner", suffix="_inner")
+                .drop([i+"_inner" for i in pwm_columns])
+                .with_columns(
+                    (
+                        (pl.col("AS_native_mean_inner") - pl.col("AS_native_mean")) /
+                        (pl.col("AS_native_var_inner")/pl.col("_w_inner") + pl.col("AS_native_var")/pl.col("_w"))
+                    ).alias("t_native")
+                )
+            )
+
+            results_ch = (
+                fixed_part.join(native_part, on="id", suffix="_native")
+                .with_columns((pl.col("t_native").pow(2) + pl.col("t_fixed").pow(2)).alias("s_l"))
+            )
+            results_parts.append(results_ch)
+
+        # Combine chromosome parts
+        results_df = pl.concat(results_parts) if results_parts else pl.DataFrame({"id": [], "s_l": []})
+
     # Sort sites by genomic order (chrom, position, strand) before writing
     results_df = (
         results_df
@@ -133,6 +341,8 @@ def compute_sl(ASnative: str, ASfixed: str, toptable: str, out_parquet: str,
         .drop(["_id_split", "_chrom", "_pos", "_strand"])  # clean up temps
     )
     results_df.write_parquet(out_parquet)
+
+
 def annotate_tss(
     input_parquet: str,
     out_parquet: str,
@@ -189,7 +399,7 @@ def annotate_tss(
     ann_df_tx = map_to_transcripts(ann_df, reference_df)
     ann_df_tx = ann_df_tx.with_columns([
         (1 / (1 + pl.col("transcript_start")/1000)).fill_null(0).alias("TSS_proximity"),
-        (1 / (1 + pl.col("transcript_start") / pl.col("transcript_length"))).fill_null(0).alias("Tx_percent")
+        (1 / (1 + pl.col("transcript_start") / pl.col("transcript_length")).fill_null(0)).alias("Tx_percent")
     ])
     
     # PyRanges overlap (IDENTICAL to original)
@@ -231,21 +441,19 @@ def annotate_tss(
             try:
                 import pyBigWig  # type: ignore
                 import numpy as np
-                if 'bw_phast' not in locals():
-                    bw_phast = pyBigWig.open(phastcons_bigwig)
-                    bw_phyl = pyBigWig.open(phylop_bigwig)
-                
+                bw_phast = pyBigWig.open(phastcons_bigwig)
+                bw_phyl = pyBigWig.open(phylop_bigwig)
+
                 positions = chrom_sites["start"].to_numpy()
                 vals_pc = []
                 vals_pl = []
                 
-                # Fetch in batches for better cache locality
                 for pos in positions:
                     try:
                         pc = bw_phast.values(chrom, int(pos), int(pos)+1, numpy=True)
                         pl_v = bw_phyl.values(chrom, int(pos), int(pos)+1, numpy=True)
-                        vals_pc.append(float(pc[0]) if pc is not None and len(pc) > 0 and not np.isnan(pc[0]) else None)
-                        vals_pl.append(float(pl_v[0]) if pl_v is not None and len(pl_v) > 0 and not np.isnan(pl_v[0]) else None)
+                        vals_pc.append(float(pc[0]) if pc is not None and len(pc) > 0 and not math.isnan(pc[0]) else None)
+                        vals_pl.append(float(pl_v[0]) if pl_v is not None and len(pl_v) > 0 and not math.isnan(pl_v[0]) else None)
                     except Exception:
                         vals_pc.append(None)
                         vals_pl.append(None)
@@ -292,18 +500,10 @@ def annotate_tss(
             )
             chrom_results.append(chrom_result)
     
-    # Close BigWig files if used
-    if use_bigwig:
-        try:
-            bw_phast.close()
-            bw_phyl.close()
-        except Exception:
-            pass
-    
     # Combine all chromosomes
     joined_ann_joined_df = pl.concat(chrom_results).lazy()
     
-    # Clean up columns (IDENTICAL to original)
+    # Clean up columns (same as original)
     joined_ann_joined_df = (
         joined_ann_joined_df if isinstance(joined_ann_joined_df, pl.LazyFrame) else joined_ann_joined_df.lazy()
     ).drop([
@@ -312,14 +512,10 @@ def annotate_tss(
         'start_codon_pos', 'stop_codon_pos', 'exon_number', 'record_id', 
         'Start_exon', 'End_exon', 'Start_b', 'End_b', 'Name', 
         'end', 'end_phylop100', 'start', 'chrom',
-        'chrom_phastcons', 'chrom_phylop100'  # Extra columns from join_asof suffixes
+        'chrom_phastcons', 'chrom_phylop100'
     ])
-    
-    # Add missing score rename if from BigWig path
-    if use_bigwig:
-        joined_ann_joined_df = joined_ann_joined_df.rename({"score": "score_phylop100"})
 
-    # Final genomic sort (IDENTICAL to original)
+    # Final genomic sort
     joined_ann_joined_df = (
         joined_ann_joined_df
         .with_columns([
@@ -336,32 +532,15 @@ def annotate_tss(
     joined_ann_joined_df.sink_parquet(out_parquet)
 
 
-def annotate(
-    input_parquet: Optional[str] = None,
-    ASnative: Optional[str] = None,
-    ASfixed: Optional[str] = None,
-    toptable: Optional[str] = None,
-    out_parquet: Optional[str] = None,
-):
-    os.makedirs("results", exist_ok=True)
-    if input_parquet is None:
-        if not (ASnative and ASfixed and toptable):
-            raise SystemExit("Need input_parquet OR all of ASnative/ASfixed/toptable")
-        tmp = (out_parquet or "results/annotated.parquet").replace("annotated", "sl")
-        compute_sl(ASnative, ASfixed, toptable, tmp)
-        input_parquet = tmp
-    annotate_tss(input_parquet, out_parquet or "results/annotated.parquet")
-
-
 def build_arg_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="accmix annotate")
+    ap = argparse.ArgumentParser(prog="accmix annotate_new")
     # annotate-acc parameters
-    ap.add_argument("--ASnative", default=None, help="Accessibility native bed6 path")
-    ap.add_argument("--ASfixed", default=None, help="Accessibility fixed bed6 path")
+    ap.add_argument("--ASnative", default=None, help="Accessibility native bed6 path OR 'plus.bw,minus.bw'")
+    ap.add_argument("--ASfixed", default=None, help="Accessibility fixed bed6 path OR 'plus.bw,minus.bw'")
     ap.add_argument("--toptable", default=None, help="TopA PWM prior tsv.gz from accmix scan")
     ap.add_argument("--M", type=int, default=50, help="Inner half-width (default 50)")
     ap.add_argument("--N", type=int, default=500, help="Outer half-width (default 500)")
-    ap.add_argument("--threshold", type=int, default=8, help="Minimum overlaps per id (default 8)")
+    ap.add_argument("--threshold", type=int, default=8, help="Minimum samples per window (default 8)")
     # annotate-tss parameters
     ap.add_argument("--input-parquet", default=None, help="Parquet to annotate (e.g., output of annotate-acc)")
     ap.add_argument("--out", default=None, help="Output parquet path for annotated features")

@@ -185,11 +185,11 @@ p_box_l2 <- ggplot(l2_tbl, aes(x = feature_recode, y = beta_l2, fill = model)) +
   coord_flip() +
   labs(x = NULL, y = "β / ||β||₂",
        title = "Contribution of parameters") +
-  theme_minimal(base_size = 10)
+  theme_minimal(base_size = 20)
 
 p_box_l2
 
-ggsave("../../final_figures/Fig6g_beta_relative_distributioin.pdf", plot = p_box_l2, device = cairo_pdf, width = 6, height = 4)
+ggsave("./plots/Fig6g_beta_relative_distributioin.pdf", plot = p_box_l2, device = cairo_pdf, width = 6, height = 4)
 ```
 
 
@@ -280,3 +280,87 @@ df %>%
 ggsave("./plots/AUC_scatterplot_of_all_kd.pdf")
 ```
 
+
+```{r}
+coef_dir   <- "../results/logs/"        # folder holding <sample>_beta_coefficients.tsv
+out_prefix <- "./routput/r_output"  # prefix for saved plots
+
+# --- 1) Read all coefficient files ---
+coef_files <- list.files(coef_dir, pattern = "_kd_beta_coefficients\\.tsv$", full.names = TRUE)
+read_coef <- function(f) {
+  read_tsv(f, show_col_types = FALSE) %>%
+    mutate(sample = str_remove(basename(f), "_kd_beta_coefficients\\.tsv$")) %>% 
+    mutate(sample = str_remove(basename(f), "_kd_beta_coefficients_s_l\\.tsv$"))
+}
+coef_all <- map_dfr(coef_files, read_coef) %>%
+  pivot_longer(c(beta_em, beta_lr), names_to = "model", values_to = "beta") %>%
+  mutate(model = recode(model, beta_em = "EM", beta_lr = "LR")) %>%
+  filter(feature != "intercept")
+
+coef_files <- list.files(coef_dir, pattern = "_kd_beta_coefficients_s_l\\.tsv$", full.names = TRUE)
+coef_s_l <- map_dfr(coef_files, read_coef) %>%
+  pivot_longer(c(beta_lr_s_l), names_to = "model", values_to = "beta") %>%
+  mutate(model = recode(model, beta_lr_s_l = "LR_with_sl")) %>%
+  filter(feature != "intercept")
+
+coef_all <- rbind(coef_all, coef_s_l) %>% mutate(sample = gsub("_kd_beta_coefficients.tsv", "", sample))
+
+
+summary_raw <- coef_all %>%
+  group_by(model, feature) %>%
+  summarise(
+    n    = n(),
+    mean = mean(beta, na.rm = TRUE),
+    sd   = sd(beta, na.rm = TRUE),
+    sem  = sd / sqrt(n),
+    .groups = "drop"
+  )
+
+# Order features by |mean| within each model for readability
+feature_order_raw <- summary_raw %>%
+  arrange(model, desc(abs(mean))) %>%
+  pull(feature) %>%
+  unique()
+
+z_tbl <- coef_all %>%
+  group_by(model, feature) %>%
+  mutate(mu = mean(beta, na.rm = TRUE),
+         s  = sd(beta, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(beta_z = ifelse(is.finite(s) & s > 0, (beta - mu) / s, 0)) %>%
+  select(sample, model, feature, beta_z)
+
+# --- 4) Within-sample L2-normalized weights (relative importance in each sample) ---
+# For each (sample, model), divide all feature betas by the L2 norm across features
+l2_tbl <- coef_all %>%
+  group_by(sample, model) %>%
+  mutate(l2 = sqrt(sum(beta^2, na.rm = TRUE))) %>%
+  ungroup() %>%
+  mutate(beta_l2 = ifelse(is.finite(l2) & l2 > 0, beta / l2, 0)) %>%
+  select(sample, model, feature, beta_l2)
+
+l2_tbl <- l2_tbl %>% 
+      mutate(feature_recode = recode(feature, 
+                                   "TSS_proximity" = "TSS proximity", 
+                                   "s_l" = "RAD-seq signal",
+                                   "score_phylop100" = "Phylop100way score", 
+                                   "score_phastcons100" = "PhastConsway score", 
+                                   "PhastCons100_percent" = "PhastCons100way region score",
+                                   "outer_mean_logPWM" = "logPWM(outer region)",
+                                   "inner_mean_logPWM" = "logPWM(inner region)",
+                                   "GC_outer_pct" = "GC content(outer region)",
+                                   "GC_inner_pct" = "GC content(inner region)",
+                                   ), model = recode(model, "LR_with_sl" = "LR with RAD-seq", "EM" = "EM (RAD-seq)"))
+
+
+p_box_l2 <- ggplot(l2_tbl, aes(x = feature_recode, y = beta_l2, fill = model)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  coord_flip() +
+  labs(x = NULL, y = "β / ||β||₂",
+       title = "Contribution of parameters") +
+  theme_minimal(base_size = 20)
+
+p_box_l2
+
+ggsave("./plots/Fig6g_beta_relative_distributioin_kd.pdf", plot = p_box_l2, device = cairo_pdf, width = 6, height = 4)
+```
