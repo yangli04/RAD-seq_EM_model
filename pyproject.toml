@@ -19,7 +19,8 @@ dependencies = [
   "pyarrow>=12",
   "numba>=0.57",
   "tqdm>=4.65",
-  "typer>=0.11"
+  "typer>=0.11",
+  "pybigwig>=0.3"
 ]
 
 [project.scripts]

@@ -6,6 +6,7 @@
 *.bed
 *.pyc
 *.fna
+*.snakemake
 .snakemake*
 test/*
 data/*
