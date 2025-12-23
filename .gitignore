@@ -11,4 +11,5 @@ test/*
 data/*
 *__pycache__/*
 results/*
+dist/*
 notebooks/*
