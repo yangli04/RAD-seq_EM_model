@@ -106,6 +106,13 @@ def run_evaluation(
     intersected_ids = set(intersections["id"].tolist()) if len(intersections) > 0 else set()
     pipintersected_ids = set(pipintersections["id"].tolist()) if len(pipintersections) > 0 else set()
 
+    # Print diagnostic information
+    print(f"Model predictions: {len(motif_pr)} regions")
+    print(f"CLIP-seq peaks: {len(clipseq_pr)} regions")
+    print(f"PIP-seq peaks: {len(pipseq_pr)} regions")
+    print(f"CLIP-seq intersections: {len(intersected_ids)} regions")
+    print(f"PIP-seq intersections: {len(pipintersected_ids)} regions")
+
     df = df.with_columns([
         pl.when(pl.col("id").is_in(list(intersected_ids)))
         .then(pl.lit("clip_bound"))
@@ -185,27 +192,50 @@ def run_evaluation(
     y_source_labels = out_df.filter(source_mask)["source"].to_numpy()
     y_source = (y_source_labels == "clip_bound").astype(int)
 
-    lr_source = LogisticRegression(max_iter=1000, random_state=42)
-    lr_source.fit(X_source, y_source)
-    y_source_proba = lr_source.predict_proba(X_source)[:, 1]
-    fpr_source, tpr_source, _ = roc_curve(y_source, y_source_proba)
-    auc_source = auc(fpr_source, tpr_source)
+    # Check if we have both classes for logistic regression
+    unique_classes = np.unique(y_source)
+    if len(unique_classes) < 2:
+        print(f"Warning: Only found {len(unique_classes)} class(es) in the data: {unique_classes}")
+        print("Cannot perform ROC analysis - need both clip_bound and clip_unbound samples.")
+        print("This suggests no overlap between model predictions and CLIP-seq peaks.")
+        
+        # Set default values
+        lr_source = None
+        auc_source = np.nan
+        fpr_source = np.array([0, 1])
+        tpr_source = np.array([0, 1])
+        y_source_proba = np.full(len(y_source), 0.5)  # Default probability
+    else:
+        lr_source = LogisticRegression(max_iter=1000, random_state=42)
+        lr_source.fit(X_source, y_source)
+        y_source_proba = lr_source.predict_proba(X_source)[:, 1]
+        fpr_source, tpr_source, _ = roc_curve(y_source, y_source_proba)
+        auc_source = auc(fpr_source, tpr_source)
 
     X_zscore_s_l = X_zscore.copy()
     X_zscore_s_l[:, 0] = stats.zscore(log_s)
     X_source_s_l = X_zscore_s_l[source_mask.to_numpy(), :]
-    lr_source_s_l = LogisticRegression(max_iter=1000, random_state=42)
-    lr_source_s_l.fit(X_source_s_l, y_source)
-    y_source_proba_s_l = lr_source_s_l.predict_proba(X_source_s_l)[:, 1]
-    fpr_source_s_l, tpr_source_s_l, _ = roc_curve(y_source, y_source_proba_s_l)
-    auc_source_s_l = auc(fpr_source_s_l, tpr_source_s_l)
+    
+    # Check if we have multiple classes for the second LogisticRegression
+    if len(unique_classes) > 1:
+        lr_source_s_l = LogisticRegression(max_iter=1000, random_state=42)
+        lr_source_s_l.fit(X_source_s_l, y_source)
+        y_source_proba_s_l = lr_source_s_l.predict_proba(X_source_s_l)[:, 1]
+        fpr_source_s_l, tpr_source_s_l, _ = roc_curve(y_source, y_source_proba_s_l)
+        auc_source_s_l = auc(fpr_source_s_l, tpr_source_s_l)
+    else:
+        # Cannot fit logistic regression with only one class
+        lr_source_s_l = None
+        y_source_proba_s_l = np.full(len(y_source), 0.5)  # Default probability
+        fpr_source_s_l, tpr_source_s_l = np.array([0, 1]), np.array([0, 1])  
+        auc_source_s_l = np.nan
 
     beta_results_df_s_l, beta_results_df, metadata_df = utils.save_analysis_results(
         None,
-        lr_source.coef_[0],
-        lr_source_s_l.coef_[0],
-        lr_source.intercept_[0],
-        lr_source_s_l.intercept_[0],
+        lr_source.coef_[0] if lr_source is not None else np.full(len(feature_columns), np.nan),
+        lr_source_s_l.coef_[0] if lr_source_s_l is not None else np.full(len(feature_columns) + 1, np.nan),
+        lr_source.intercept_[0] if lr_source is not None else np.nan,
+        lr_source_s_l.intercept_[0] if lr_source_s_l is not None else np.nan,
         feature_columns,
         roc_auc,
         roc_auc_control,

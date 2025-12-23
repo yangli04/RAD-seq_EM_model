@@ -34,21 +34,42 @@ def compute_qq_validate_distribution(
     results: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     for i, source in enumerate(sources):
-        log_data = np.log(out_df.filter(pl.col("source") == source)[variable].to_numpy() + addition)
+        raw_data = out_df.filter(pl.col("source") == source)[variable].to_numpy()
+        log_data = np.log(raw_data + addition)
+        
+        # Filter out zeros and negative values for Gamma distribution fitting
+        # but keep all data for plotting
         results[source] = {}
 
         for j, (name, dist) in enumerate(distributions):
             if name == "Gamma":
-                params = dist.fit(log_data, floc=0)
+                # For Gamma distribution, filter out non-positive values
+                positive_mask = log_data > 0
+                if np.sum(positive_mask) == 0:
+                    # If no positive values, skip Gamma fitting
+                    print(f"Warning: No positive values found for {source} - {name} distribution. Skipping.")
+                    results[source][name] = {
+                        "r2": np.nan,
+                        "ks_p": np.nan,
+                        "qq_deviation": np.nan,
+                    }
+                    axes[i, j].set_title(f"{source} - {name}\nNo positive values - skipped")
+                    continue
+                filtered_log_data = log_data[positive_mask]
+                params = dist.fit(filtered_log_data, floc=0)
+                # Use filtered data for stats but original data for plotting
+                fit_data = filtered_log_data
             else:
                 params = dist.fit(log_data)
+                fit_data = log_data
 
+            # Use all data for plotting but filtered data for statistical tests
             stats.probplot(log_data, dist=dist, sparams=params, plot=axes[i, j])
 
             theoretical = axes[i, j].get_lines()[1].get_xdata()
             empirical = axes[i, j].get_lines()[1].get_ydata()
             r2 = float(np.corrcoef(theoretical, empirical)[0, 1] ** 2)
-            ks_stat, ks_p = stats.kstest(log_data, lambda x: dist.cdf(x, *params))
+            ks_stat, ks_p = stats.kstest(fit_data, lambda x: dist.cdf(x, *params))
             qq_deviation = float(np.mean(np.abs(empirical - theoretical)))
 
             axes[i, j].set_title(f"{source} - {name}\nR²={r2:.3f}, QQ-dev={qq_deviation:.3f}\nKS p={ks_p:.3f}")
