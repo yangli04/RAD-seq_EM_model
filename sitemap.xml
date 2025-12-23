@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/changelog/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/cli/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/data/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/development/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/installation/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/reproducibility/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+    <url>
+         <loc>https://yangli04.github.io/RAD-seq_EM_model/tutorial/</loc>
+         <lastmod>2025-12-23</lastmod>
+    </url>
+</urlset>
